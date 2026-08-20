@@ -60,6 +60,8 @@ import {
 import {
   createContext,
   useContext,
+  useEffect,
+  useState,
   type ComponentType,
   type FC,
   type PropsWithChildren,
@@ -211,6 +213,9 @@ const ThreadMessage: FC = () => {
 };
 
 const ThreadScrollToBottom: FC = () => {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
   return (
     <ThreadPrimitive.ScrollToBottom render={<TooltipIconButton tooltip="Scroll to bottom" variant="outline" className="aui-thread-scroll-to-bottom dark:border-border dark:bg-background dark:hover:bg-accent absolute -top-12 z-10 self-center rounded-full p-4 disabled:invisible" />}><ArrowDownIcon /></ThreadPrimitive.ScrollToBottom>
   );
