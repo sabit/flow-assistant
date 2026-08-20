@@ -14,6 +14,7 @@ export const validateWorkflow = (workflow: unknown): WorkflowIssue[] => {
     for (const error of validateSchema.errors ?? []) {
       issues.push({
         severity: "error",
+        path: error.instancePath,
         message: `${error.instancePath || "workflow"} ${error.message ?? "is invalid"}`,
       });
     }
@@ -26,7 +27,11 @@ export const validateGraph = (workflow: WorkflowDocument): WorkflowIssue[] => {
   const issues: WorkflowIssue[] = [];
   const nodes = workflow.nodes ?? {};
   if (!nodes[workflow.start]) {
-    issues.push({ severity: "error", message: `Start node "${workflow.start}" does not exist.` });
+    issues.push({
+      severity: "error",
+      path: "/start",
+      message: `Start node "${workflow.start}" does not exist.`,
+    });
   }
   const groups = workflow.groups ?? {};
   const edges = workflowAdapter.getEdges(workflow);
@@ -35,6 +40,7 @@ export const validateGraph = (workflow: WorkflowDocument): WorkflowIssue[] => {
       issues.push({
         severity: "error",
         nodeId: id,
+        path: `/nodes/${id}/group`,
         message: `References missing group "${node.group}".`,
       });
     }
@@ -44,6 +50,7 @@ export const validateGraph = (workflow: WorkflowDocument): WorkflowIssue[] => {
       issues.push({
         severity: "error",
         nodeId: edge.from,
+        path: `/nodes/${edge.from}`,
         message: `References missing node "${edge.to}".`,
       });
     }
@@ -57,11 +64,20 @@ export const validateGraph = (workflow: WorkflowDocument): WorkflowIssue[] => {
   visit(workflow.start);
   for (const nodeId of Object.keys(nodes)) {
     if (!visited.has(nodeId)) {
-      issues.push({ severity: "warning", nodeId, message: "Node is unreachable from start." });
+      issues.push({
+        severity: "warning",
+        nodeId,
+        path: `/nodes/${nodeId}`,
+        message: "Node is unreachable from start.",
+      });
     }
   }
   if (!Object.values(nodes).some((node) => node.type === "result")) {
-    issues.push({ severity: "warning", message: "Workflow has no terminal result node." });
+    issues.push({
+      severity: "warning",
+      path: "/nodes",
+      message: "Workflow has no terminal result node.",
+    });
   }
   return issues;
 };

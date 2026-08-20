@@ -12,6 +12,7 @@ import type { JSONSchema7 } from "ai";
 import {
   Check,
   Copy,
+  FileJson,
   History,
   PanelRightClose,
   PanelRightOpen,
@@ -23,6 +24,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import workflowSchema from "@/docs/kiosk-workflow.schema.json";
 import sampleWorkflow from "@/docs/minimal-valid-workflow.json";
 import { Thread } from "@/components/assistant-ui/thread";
+import { WorkflowJsonViewer } from "@/components/workflow-json-viewer";
 import { workflowAdapter } from "@/lib/workflow/adapter";
 import { workflowToMermaid } from "@/lib/workflow/mermaid";
 import { workflowDb } from "@/lib/workflow/store";
@@ -115,6 +117,7 @@ export function WorkflowWorkbench() {
   const [showAssistant, setShowAssistant] = useState(true);
   const [showHistory, setShowHistory] = useState(false);
   const [showPaste, setShowPaste] = useState(false);
+  const [rawRevision, setRawRevision] = useState<WorkflowRevision>();
   const [pasteValue, setPasteValue] = useState("");
   const [notice, setNotice] = useState<string>();
   const [hydrated, setHydrated] = useState(false);
@@ -207,7 +210,7 @@ export function WorkflowWorkbench() {
         workflow: structuredClone(document),
         validation: {
           status: "invalid",
-          issues: attemptIssues.map((issue) => issue.message),
+          issues: attemptIssues,
         },
       };
       const record = {
@@ -509,7 +512,17 @@ export function WorkflowWorkbench() {
                 Read-only graph · select a node to inspect it
               </p>
             </div>
-            <ValidationBadge issues={issues} />
+            <div className="flex items-center gap-2">
+              <ValidationBadge issues={issues} />
+              <button
+                type="button"
+                disabled={!currentRevision}
+                onClick={() => currentRevision && setRawRevision(currentRevision)}
+                className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              >
+                <FileJson size={14} /> View Raw
+              </button>
+            </div>
           </div>
           <div className="min-h-0 flex-1 overflow-auto p-4 md:p-6">
             <MermaidCanvas
@@ -597,7 +610,11 @@ export function WorkflowWorkbench() {
           currentRevisionId={currentRevision?.id}
           onClose={() => setShowHistory(false)}
           onRestore={(revision) => void restore(revision)}
+          onViewRaw={(revision) => setRawRevision(revision)}
         />
+      )}
+      {rawRevision && (
+        <RawWorkflowDialog revision={rawRevision} onClose={() => setRawRevision(undefined)} />
       )}
       {!hydrated && (
         <div className="pointer-events-none fixed inset-x-0 bottom-3 text-center text-xs text-slate-400">
@@ -968,11 +985,13 @@ function HistoryDialog({
   currentRevisionId,
   onClose,
   onRestore,
+  onViewRaw,
 }: {
   revisions: WorkflowRevision[];
   currentRevisionId?: string;
   onClose: () => void;
   onRestore: (revision: WorkflowRevision) => void;
+  onViewRaw: (revision: WorkflowRevision) => void;
 }) {
   return (
     <div className="fixed inset-0 z-20 flex justify-end bg-slate-950/20">
@@ -990,6 +1009,12 @@ function HistoryDialog({
           {revisions.map((revision) => (
             <div
               key={revision.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => onViewRaw(revision)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") onViewRaw(revision);
+              }}
               className={`rounded-lg border p-3 ${revision.id === currentRevisionId ? "border-cyan-300 bg-cyan-50" : "border-slate-200"}`}
             >
               <div className="flex items-start justify-between gap-3">
@@ -1006,7 +1031,10 @@ function HistoryDialog({
                   </span>
                 ) : (
                   <button
-                    onClick={() => onRestore(revision)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onRestore(revision);
+                    }}
                     className="rounded border border-slate-200 px-2 py-1 text-xs"
                   >
                     Restore
@@ -1017,6 +1045,46 @@ function HistoryDialog({
           ))}
         </div>
       </aside>
+    </div>
+  );
+}
+
+function RawWorkflowDialog({
+  revision,
+  onClose,
+}: {
+  revision: WorkflowRevision;
+  onClose: () => void;
+}) {
+  const revisionIssues = useMemo(() => validateWorkflow(revision.workflow), [revision.workflow]);
+  const errors = revisionIssues.filter((issue) => issue.severity === "error").length;
+  const warnings = revisionIssues.length - errors;
+  return (
+    <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-950/50 p-4">
+      <section className="flex h-[min(52rem,92vh)] w-[min(76rem,96vw)] flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
+        <header className="flex shrink-0 items-center justify-between border-b border-slate-200 px-4 py-3">
+          <div>
+            <h2 className="font-semibold">Raw workflow JSON</h2>
+            <p className="mt-0.5 font-mono text-xs text-slate-500">
+              Revision {revision.id.slice(0, 8)} · {errors} errors · {warnings} warnings
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md p-2 text-slate-600 hover:bg-slate-100"
+            aria-label="Close raw workflow"
+          >
+            <X size={18} />
+          </button>
+        </header>
+        <div className="min-h-0 flex-1">
+          <WorkflowJsonViewer document={revision.workflow} issues={revisionIssues} />
+        </div>
+        <footer className="shrink-0 border-t border-slate-200 px-4 py-2 text-xs text-slate-500">
+          Schema errors are marked in red; warnings are marked in amber. Hover a marker for details.
+        </footer>
+      </section>
     </div>
   );
 }

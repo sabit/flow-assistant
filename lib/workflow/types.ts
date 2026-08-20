@@ -37,6 +37,7 @@ export type WorkflowDocument = {
 export type WorkflowIssue = {
   severity: "error" | "warning";
   nodeId?: string;
+  path?: string;
   message: string;
 };
 
@@ -51,7 +52,7 @@ export type WorkflowRevision = {
   patch?: JsonPatchOperation[];
   validation?: {
     status: "valid" | "invalid";
-    issues: string[];
+    issues: WorkflowIssue[];
   };
 };
 
