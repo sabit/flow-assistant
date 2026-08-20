@@ -121,6 +121,7 @@ export function WorkflowWorkbench() {
   const [pasteValue, setPasteValue] = useState("");
   const [notice, setNotice] = useState<string>();
   const [hydrated, setHydrated] = useState(false);
+  const [modelInfo, setModelInfo] = useState<{ provider: string; model: string }>();
   const issues = useMemo(() => validateWorkflow(workflow), [workflow]);
 
   const activate = useCallback(
@@ -247,6 +248,22 @@ export function WorkflowWorkbench() {
       cancelled = true;
     };
   }, [activate, createWorkflow]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetch("/api/chat", { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error("Model info is unavailable");
+        return response.json() as Promise<{ provider: string; model: string }>;
+      })
+      .then(setModelInfo)
+      .catch((error: unknown) => {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          console.warn("[chat] could not load model info", error);
+        }
+      });
+    return () => controller.abort();
+  }, []);
 
   useAssistantInstructions(assistantInstructions);
   useAssistantContext({
@@ -568,11 +585,21 @@ export function WorkflowWorkbench() {
 
         {showAssistant && (
           <aside className="flex w-[min(100%,28rem)] shrink-0 flex-col border-l border-slate-200 bg-white">
-            <div className="flex min-h-14 items-center justify-between border-b border-slate-200 px-4">
-              <div>
+            <div className="flex min-h-14 items-center justify-between gap-3 border-b border-slate-200 px-4">
+              <div className="min-w-0">
                 <h2 className="text-sm font-semibold">Workflow assistant</h2>
                 <p className="text-xs text-slate-500">Changes are saved as undoable revisions</p>
               </div>
+              <span
+                className="max-w-44 shrink-0 truncate rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 font-mono text-[10px] text-slate-600"
+                title={
+                  modelInfo
+                    ? `${modelInfo.provider} model: ${modelInfo.model}`
+                    : "Loading current model"
+                }
+              >
+                {modelInfo ? `${modelInfo.provider} · ${modelInfo.model}` : "Model · …"}
+              </span>
             </div>
             {attachment && (
               <div className="mx-3 mt-3 flex items-center justify-between gap-2 rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs text-cyan-950">

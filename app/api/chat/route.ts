@@ -2,6 +2,12 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { frontendTools } from "@assistant-ui/react-ai-sdk";
 import { type JSONSchema7, streamText, convertToModelMessages, type UIMessage } from "ai";
 
+const getModelName = () => process.env.OLLAMA_MODEL ?? "qwen3:8b";
+
+export async function GET() {
+  return Response.json({ provider: "Ollama", model: getModelName() });
+}
+
 export async function POST(req: Request) {
   const {
     messages,
@@ -18,7 +24,7 @@ export async function POST(req: Request) {
     baseURL: ollamaBaseURL,
     apiKey: process.env.OLLAMA_API_KEY ?? "ollama",
   });
-  const model = process.env.OLLAMA_MODEL ?? "qwen3:8b";
+  const model = getModelName();
   const modelMessages = await convertToModelMessages(messages);
   const toolEntries = Object.keys(tools ?? {});
   const toolSchemaChars = Object.fromEntries(
