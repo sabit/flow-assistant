@@ -49,6 +49,10 @@ export type WorkflowRevision = {
   summary?: string;
   workflow: WorkflowDocument;
   patch?: JsonPatchOperation[];
+  validation?: {
+    status: "valid" | "invalid";
+    issues: string[];
+  };
 };
 
 export type WorkflowRecord = {

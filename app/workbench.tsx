@@ -8,6 +8,7 @@ import {
   useAssistantTool,
 } from "@assistant-ui/react";
 import { z } from "zod";
+import type { JSONSchema7 } from "ai";
 import {
   Check,
   Copy,
@@ -19,6 +20,7 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import workflowSchema from "@/docs/kiosk-workflow.schema.json";
 import sampleWorkflow from "@/docs/minimal-valid-workflow.json";
 import { Thread } from "@/components/assistant-ui/thread";
 import { workflowAdapter } from "@/lib/workflow/adapter";
@@ -41,7 +43,18 @@ const now = () => new Date().toISOString();
 const newId = () => crypto.randomUUID();
 
 const assistantInstructions = `You are the workflow authoring assistant. Workflow documents are immutable browser-side revisions; you never mutate them directly.
-For any requested workflow modification, inspect the provided revision-aware context and call propose_workflow_patch exactly once with an RFC 6902 JSON Patch and the exact baseRevisionId. Do not propose a patch when the request is only explanatory. Use narrow patches, preserve schema validity, and describe the change concisely. The user must review and apply every proposal.`;
+For a request to generate a fresh workflow from business requirements, call generate_workflow with the complete workflow document. Its input schema is the complete kiosk workflow JSON Schema. If the tool returns status "invalid", silently correct the document from the returned validation errors and call generate_workflow again. Continue until it returns status "applied"; do not tell the user that schema generation is unavailable and do not ask to build one node at a time.
+For a requested modification to an existing workflow, inspect the provided revision-aware context and call propose_workflow_patch exactly once with an RFC 6902 JSON Patch and the exact baseRevisionId. Do not call either tool when the request is only explanatory. Use narrow patches for edits, preserve schema validity, and describe changes concisely. Valid changes are saved automatically as immutable revisions.`;
+
+const nodeShapeReference = {
+  input: "type, component, binding, and exactly one of next/transitions",
+  selection: "type, binding, options, and exactly one of next/transitions",
+  display: "type, content, next (variant is optional)",
+  action: "type, operation, next",
+  confirmation: "type, summary, next",
+  submit: "type, operation, onSuccess, onFailure",
+  result: "type, variant",
+} as const;
 
 const patchSchema = z.object({
   summary: z.string().min(1),
@@ -181,6 +194,37 @@ export function WorkflowWorkbench() {
     [activate, currentRevision, revisions, workflowRecord],
   );
 
+  const saveInvalidGenerationAttempt = useCallback(
+    async (document: WorkflowDocument, attemptIssues: WorkflowIssue[]) => {
+      if (!workflowRecord || !currentRevision) return;
+      const revision: WorkflowRevision = {
+        id: newId(),
+        workflowId: workflowRecord.id,
+        parentRevisionId: currentRevision.id,
+        createdAt: now(),
+        source: "ai",
+        summary: "Invalid AI generation attempt",
+        workflow: structuredClone(document),
+        validation: {
+          status: "invalid",
+          issues: attemptIssues.map((issue) => issue.message),
+        },
+      };
+      const record = {
+        ...workflowRecord,
+        currentRevisionId: revision.id,
+        updatedAt: revision.createdAt,
+      };
+      await workflowDb.transaction("rw", workflowDb.workflows, workflowDb.revisions, async () => {
+        await workflowDb.workflows.put(record);
+        await workflowDb.revisions.add(revision);
+      });
+      activate(record, revision, [...revisions, revision]);
+      return revision;
+    },
+    [activate, currentRevision, revisions, workflowRecord],
+  );
+
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -205,7 +249,7 @@ export function WorkflowWorkbench() {
   useAssistantContext({
     getContext: () => {
       if (!attachment)
-        return "No workflow element is attached. Ask the user to select and attach one before proposing a change.";
+        return "No workflow element is attached. Fresh workflow generation is available from the user's business requirements; an existing element must be attached before proposing an edit.";
       const revision = revisions.find((item) => item.id === attachment.revisionId);
       if (!revision) return "The attached workflow revision is unavailable.";
       const attachedSelection: WorkflowSelection =
@@ -219,6 +263,72 @@ export function WorkflowWorkbench() {
           ? revision.workflow
           : workflowAdapter.buildSelectionContext(revision.workflow, attachedSelection);
       return `Workflow context (immutable):\n${JSON.stringify({ workflowId: revision.workflowId, revisionId: revision.id, selection: context }, null, 2)}`;
+    },
+  });
+
+  useAssistantTool<
+    WorkflowDocument,
+    {
+      status: string;
+      validation: string;
+      errors: string[];
+      retryRequired?: boolean;
+      correctionInstructions?: string;
+      nodeShapeReference?: typeof nodeShapeReference;
+      savedRevisionId?: string;
+    }
+  >({
+    toolName: "generate_workflow",
+    description:
+      "Generate a complete new kiosk workflow from the user's business requirements. The arguments must be the full workflow document and conform to the supplied JSON Schema. A valid workflow is saved automatically as a new immutable revision.",
+    parameters: workflowSchema as unknown as JSONSchema7,
+    execute: async (generatedWorkflow) => {
+      const issues = validateWorkflow(generatedWorkflow);
+      const hasErrors = issues.some((issue) => issue.severity === "error");
+      let savedRevisionId: string | undefined;
+      if (!hasErrors) {
+        const revision = await createRevision(
+          generatedWorkflow,
+          "ai",
+          "Valid AI-generated workflow",
+        );
+        savedRevisionId = revision?.id;
+        setNotice("Generated workflow saved as a new revision.");
+      } else {
+        const revision = await saveInvalidGenerationAttempt(generatedWorkflow, issues);
+        savedRevisionId = revision?.id;
+      }
+      return {
+        status: hasErrors ? "invalid" : "applied",
+        validation: issueSummary(issues),
+        errors: issues.map((issue) => issue.message),
+        savedRevisionId,
+        ...(hasErrors
+          ? {
+              retryRequired: true,
+              correctionInstructions:
+                "Correct every listed error in the same complete document, then call generate_workflow again. Do not respond to the user until the tool returns status applied.",
+              nodeShapeReference,
+            }
+          : {}),
+      };
+    },
+    render: ({ result, status, argsText }) => {
+      if (status.type === "running") return null;
+      if (status.type === "complete" && result?.status === "applied") return null;
+      return (
+        <WorkflowToolError
+          title="Workflow generation failed"
+          messages={result?.errors}
+          fallback={
+            status.type === "incomplete"
+              ? `The model produced an incomplete tool call (${status.reason}).`
+              : "The generated JSON did not pass workflow validation."
+          }
+          details={argsText}
+          savedRevisionId={result?.savedRevisionId}
+        />
+      );
     },
   });
 
@@ -252,20 +362,21 @@ export function WorkflowWorkbench() {
               .filter(Boolean) as string[],
           ),
         ];
-        const nextProposal: PatchProposal = {
-          summary: args.summary,
-          baseRevisionId: args.baseRevisionId,
-          patch: args.patch as JsonPatchOperation[],
-          workflow: nextWorkflow,
-          issues: nextIssues,
-          affectedNodeIds,
-        };
-        setProposal(nextProposal);
         const errors = nextIssues.filter((issue) => issue.severity === "error");
+        if (!errors.length) {
+          await createRevision(
+            nextWorkflow,
+            "ai",
+            args.summary,
+            args.patch as JsonPatchOperation[],
+          );
+          setNotice("Workflow change saved as a new revision.");
+        }
         return {
-          status: errors.length ? "invalid" : "ready",
+          status: errors.length ? "invalid" : "applied",
           validation: issueSummary(nextIssues),
           affectedNodeIds,
+          errors: errors.map((issue) => issue.message),
         };
       } catch (error) {
         return {
@@ -274,18 +385,26 @@ export function WorkflowWorkbench() {
         };
       }
     },
-    render: ({ args, result, status }) => (
-      <PatchProposalCard
-        args={args as { summary?: string; baseRevisionId?: string; patch?: JsonPatchOperation[] }}
-        result={result as { status?: string; validation?: string; message?: string } | undefined}
-        status={status.type}
-        proposal={proposal}
-        onApply={() =>
-          proposal && void createRevision(proposal.workflow, "ai", proposal.summary, proposal.patch)
-        }
-        onReject={() => setProposal(undefined)}
-      />
-    ),
+    render: ({ result, status, argsText }) => {
+      const toolResult = result as
+        | { status?: string; message?: string; errors?: string[] }
+        | undefined;
+      if (status.type === "running") return null;
+      if (status.type === "complete" && toolResult?.status === "applied") return null;
+      return (
+        <WorkflowToolError
+          title="Workflow edit failed"
+          messages={toolResult?.errors}
+          fallback={
+            toolResult?.message ??
+            (status.type === "incomplete"
+              ? `The model produced an incomplete tool call (${status.reason}).`
+              : "The workflow patch could not be applied.")
+          }
+          details={argsText}
+        />
+      );
+    },
   });
 
   const importWorkflow = async () => {
@@ -439,7 +558,7 @@ export function WorkflowWorkbench() {
             <div className="flex min-h-14 items-center justify-between border-b border-slate-200 px-4">
               <div>
                 <h2 className="text-sm font-semibold">Workflow assistant</h2>
-                <p className="text-xs text-slate-500">Patch proposals require your approval</p>
+                <p className="text-xs text-slate-500">Changes are saved as undoable revisions</p>
               </div>
             </div>
             {attachment && (
@@ -670,70 +789,76 @@ function Info({ label, value }: { label: string; value?: string }) {
   );
 }
 
-function PatchProposalCard({
-  args,
-  result,
-  status,
-  proposal,
-  onApply,
-  onReject,
+function WorkflowToolError({
+  title,
+  messages,
+  fallback,
+  details,
+  savedRevisionId,
 }: {
-  args: { summary?: string; baseRevisionId?: string; patch?: JsonPatchOperation[] };
-  result?: { status?: string; validation?: string; message?: string };
-  status: string;
-  proposal?: PatchProposal;
-  onApply: () => void;
-  onReject: () => void;
+  title: string;
+  messages?: string[];
+  fallback: string;
+  details?: string;
+  savedRevisionId?: string;
 }) {
-  if (status === "running")
-    return (
-      <div className="my-3 animate-pulse rounded-lg border border-slate-200 p-3 text-sm text-slate-500">
-        Checking workflow patch…
-      </div>
-    );
-  const invalid = result?.status === "invalid" || result?.status === "stale";
+  const reasons = messages?.length ? messages : [fallback];
   return (
-    <div className="my-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-cyan-700">
-            Workflow patch proposal
-          </p>
-          <p className="mt-1 text-sm font-medium">{args.summary ?? "Proposed workflow change"}</p>
-        </div>
-        <span
-          className={`rounded-full px-2 py-0.5 text-xs ${invalid ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}
-        >
-          {result?.status ?? status}
-        </span>
-      </div>
-      <p className="mt-2 text-xs text-slate-500">
-        Base revision: {args.baseRevisionId?.slice(0, 8) ?? "—"} · {args.patch?.length ?? 0}{" "}
-        operations
-      </p>
-      {result?.message && <p className="mt-2 text-xs text-rose-700">{result.message}</p>}
-      {proposal && (
-        <p className="mt-2 text-xs text-slate-600">
-          {issueSummary(proposal.issues)} · affects{" "}
-          {proposal.affectedNodeIds.join(", ") || "workflow metadata"}
+    <div className="my-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-rose-950">
+      <p className="text-xs font-semibold uppercase tracking-wide text-rose-700">{title}</p>
+      {savedRevisionId && (
+        <p className="mt-1 text-xs text-rose-800">
+          Saved as current revision <span className="font-mono">{savedRevisionId.slice(0, 8)}</span>
         </p>
       )}
-      <div className="mt-3 flex gap-2">
-        <button
-          onClick={onReject}
-          className="rounded-md border border-slate-200 px-2.5 py-1.5 text-xs"
-        >
-          Reject
-        </button>
-        <button
-          disabled={invalid || !proposal}
-          onClick={onApply}
-          className="rounded-md bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-white disabled:opacity-40"
-        >
-          Apply
-        </button>
+      <div className={`mt-2 grid gap-3 ${details ? "md:grid-cols-2" : ""}`}>
+        <div className="min-w-0 rounded-md bg-white/70 p-2">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-rose-700">
+            Schema validation
+          </p>
+          <ul className="max-h-72 list-disc space-y-1 overflow-auto pl-4 text-xs">
+            {reasons.map((reason, index) => (
+              <li key={`${index}-${reason}`}>{reason}</li>
+            ))}
+          </ul>
+        </div>
+        {details && (
+          <div className="min-w-0 rounded-md bg-slate-950 p-2">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+              Raw generated JSON
+            </p>
+            <HighlightedJson source={details} />
+          </div>
+        )}
       </div>
     </div>
+  );
+}
+
+function HighlightedJson({ source }: { source: string }) {
+  const tokens = source.split(
+    /("(?:\\u[\da-fA-F]{4}|\\[^u]|[^\\"])*"\s*:|"(?:\\u[\da-fA-F]{4}|\\[^u]|[^\\"])*"|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|\b(?:true|false|null)\b)/g,
+  );
+  return (
+    <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-5 text-slate-200">
+      {tokens.map((token, index) => {
+        const trimmed = token.trim();
+        const className = trimmed.endsWith(":")
+          ? "text-cyan-300"
+          : trimmed.startsWith('"')
+            ? "text-emerald-300"
+            : /^(true|false|null)$/.test(trimmed)
+              ? "text-violet-300"
+              : /^-?\d/.test(trimmed)
+                ? "text-amber-300"
+                : undefined;
+        return (
+          <span className={className} key={index}>
+            {token}
+          </span>
+        );
+      })}
+    </pre>
   );
 }
 
@@ -876,7 +1001,8 @@ function HistoryDialog({
                 </div>
                 {revision.id === currentRevisionId ? (
                   <span className="flex items-center gap-1 text-xs text-cyan-800">
-                    <Check size={13} /> Current
+                    <Check size={13} />
+                    {revision.validation?.status === "invalid" ? "Current · invalid" : "Current"}
                   </span>
                 ) : (
                   <button

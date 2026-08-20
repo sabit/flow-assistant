@@ -13,21 +13,31 @@ export async function POST(req: Request) {
     tools?: Record<string, { description?: string; parameters: JSONSchema7 }>;
   } = await req.json();
 
+  const ollamaBaseURL = `${(process.env.OLLAMA_BASE_URL ?? "http://localhost:11434").replace(/\/$/, "")}/v1`;
   const ollama = createOpenAI({
-    baseURL: `${(process.env.OLLAMA_BASE_URL ?? "http://localhost:11434").replace(/\/$/, "")}/v1`,
+    baseURL: ollamaBaseURL,
     apiKey: process.env.OLLAMA_API_KEY ?? "ollama",
   });
   const model = process.env.OLLAMA_MODEL ?? "qwen3:8b";
   const modelMessages = await convertToModelMessages(messages);
   const toolEntries = Object.keys(tools ?? {});
+  const toolSchemaChars = Object.fromEntries(
+    Object.entries(tools ?? {}).map(([name, definition]) => [
+      name,
+      JSON.stringify(definition).length,
+    ]),
+  );
   console.debug("[chat] agent API call", {
     model,
-    baseURL: ollama,
+    baseURL: ollamaBaseURL,
     messageCount: messages.length,
     convertedMessageCount: modelMessages.length,
     hasSystem: Boolean(system),
+    systemChars: system?.length ?? 0,
     toolNames: toolEntries,
     toolCount: toolEntries.length,
+    toolSchemaChars,
+    totalToolSchemaChars: JSON.stringify(tools ?? {}).length,
     timestamp: new Date().toISOString(),
   });
   const result = streamText({
