@@ -4,7 +4,7 @@ import schema from "@/docs/kiosk-workflow.schema.json";
 import { workflowAdapter } from "@/lib/workflow/adapter";
 import type { WorkflowDocument, WorkflowIssue } from "@/lib/workflow/types";
 
-const ajv = new Ajv2020({ allErrors: true, strict: false });
+const ajv = new Ajv2020({ allErrors: true, discriminator: true, strict: false });
 addFormats(ajv);
 const validateSchema = ajv.compile(schema);
 

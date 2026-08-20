@@ -510,6 +510,10 @@
       }
     },
     "node": {
+      "discriminator": {
+        "propertyName": "type"
+      },
+      "required": ["type"],
       "oneOf": [
         { "$ref": "#/$defs/inputNode" },
         { "$ref": "#/$defs/selectionNode" },
