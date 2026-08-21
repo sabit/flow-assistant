@@ -6,6 +6,7 @@ import {
   useAssistantContext,
   useAssistantInstructions,
   useAssistantTool,
+  useAuiState,
 } from "@assistant-ui/react";
 import { z } from "zod";
 import type { JSONSchema7 } from "ai";
@@ -43,9 +44,10 @@ import { validateWorkflow } from "@/lib/workflow/validation";
 const initialWorkflow = sampleWorkflow as WorkflowDocument;
 const now = () => new Date().toISOString();
 const newId = () => crypto.randomUUID();
+const maxGenerationAttempts = 3;
 
 const assistantInstructions = `You are the workflow authoring assistant. Workflow documents are immutable browser-side revisions; you never mutate them directly.
-For a request to generate a fresh workflow from business requirements, call generate_workflow with the complete workflow document. Its input schema is the complete kiosk workflow JSON Schema. If the tool returns status "invalid", silently correct the document from the returned validation errors and call generate_workflow again. Continue until it returns status "applied"; do not tell the user that schema generation is unavailable and do not ask to build one node at a time.
+For a request to generate a fresh workflow from business requirements, call generate_workflow with the complete workflow document. Its input schema is the complete kiosk workflow JSON Schema. If the tool returns status "invalid" with retryRequired true, silently correct the complete document from the structured validation errors and call generate_workflow again. The application limits and schedules retries. Do not respond between attempts and do not ask to build one node at a time.
 For a requested modification to an existing workflow, inspect the provided revision-aware context and call propose_workflow_patch exactly once with an RFC 6902 JSON Patch and the exact baseRevisionId. Do not call either tool when the request is only explanatory. Use narrow patches for edits, preserve schema validity, and describe changes concisely. Valid changes are saved automatically as immutable revisions.`;
 
 const nodeShapeReference = {
@@ -122,6 +124,14 @@ export function WorkflowWorkbench() {
   const [notice, setNotice] = useState<string>();
   const [hydrated, setHydrated] = useState(false);
   const [modelInfo, setModelInfo] = useState<{ provider: string; model: string }>();
+  const latestUserMessageId = useAuiState((state) => {
+    for (let index = state.thread.messages.length - 1; index >= 0; index -= 1) {
+      const message = state.thread.messages[index];
+      if (message?.role === "user") return message.id;
+    }
+    return undefined;
+  });
+  const generationAttemptRef = useRef<{ requestId?: string; count: number }>({ count: 0 });
   const issues = useMemo(() => validateWorkflow(workflow), [workflow]);
 
   const activate = useCallback(
@@ -291,8 +301,11 @@ export function WorkflowWorkbench() {
     {
       status: string;
       validation: string;
-      errors: string[];
-      retryRequired?: boolean;
+      errors: WorkflowIssue[];
+      attempt: number;
+      maxAttempts: number;
+      retryRequired: boolean;
+      retryExhausted?: boolean;
       correctionInstructions?: string;
       nodeShapeReference?: typeof nodeShapeReference;
       savedRevisionId?: string;
@@ -303,8 +316,15 @@ export function WorkflowWorkbench() {
       "Generate a complete new kiosk workflow from the user's business requirements. The arguments must be the full workflow document and conform to the supplied JSON Schema. A valid workflow is saved automatically as a new immutable revision.",
     parameters: workflowSchema as unknown as JSONSchema7,
     execute: async (generatedWorkflow) => {
+      if (generationAttemptRef.current.requestId !== latestUserMessageId) {
+        generationAttemptRef.current = { requestId: latestUserMessageId, count: 0 };
+      }
+      const attempt = generationAttemptRef.current.count + 1;
+      generationAttemptRef.current.count = attempt;
       const issues = validateWorkflow(generatedWorkflow);
-      const hasErrors = issues.some((issue) => issue.severity === "error");
+      const errors = issues.filter((issue) => issue.severity === "error");
+      const hasErrors = errors.length > 0;
+      const retryRequired = hasErrors && attempt < maxGenerationAttempts;
       let savedRevisionId: string | undefined;
       if (!hasErrors) {
         const revision = await createRevision(
@@ -321,25 +341,39 @@ export function WorkflowWorkbench() {
       return {
         status: hasErrors ? "invalid" : "applied",
         validation: issueSummary(issues),
-        errors: issues.map((issue) => issue.message),
+        errors,
+        attempt,
+        maxAttempts: maxGenerationAttempts,
+        retryRequired,
         savedRevisionId,
         ...(hasErrors
           ? {
-              retryRequired: true,
-              correctionInstructions:
-                "Correct every listed error in the same complete document, then call generate_workflow again. Do not respond to the user until the tool returns status applied.",
+              retryExhausted: !retryRequired,
+              correctionInstructions: retryRequired
+                ? "Correct every structured validation error in the same complete document. The next turn is forced to call generate_workflow; do not emit conversational text."
+                : "Automatic correction stopped after the maximum attempts. Do not call generate_workflow again unless the user requests another attempt.",
               nodeShapeReference,
             }
           : {}),
       };
     },
     render: ({ result, status, argsText }) => {
-      if (status.type === "running") return null;
+      if (status.type === "running") {
+        return (
+          <div className="my-3 rounded-xl border border-cyan-200 bg-cyan-50 p-3 text-xs text-cyan-900">
+            Generating and validating workflow…
+          </div>
+        );
+      }
       if (status.type === "complete" && result?.status === "applied") return null;
       return (
         <WorkflowToolError
-          title="Workflow generation failed"
-          messages={result?.errors}
+          title={
+            result?.retryRequired
+              ? `Correcting workflow · attempt ${result.attempt} of ${result.maxAttempts}`
+              : "Workflow generation failed"
+          }
+          messages={result?.errors.map((issue) => issue.message)}
           fallback={
             status.type === "incomplete"
               ? `The model produced an incomplete tool call (${status.reason}).`
@@ -347,6 +381,13 @@ export function WorkflowWorkbench() {
           }
           details={argsText}
           savedRevisionId={result?.savedRevisionId}
+          retryMessage={
+            result?.retryRequired
+              ? `Retrying automatically (${result.attempt + 1} of ${result.maxAttempts})…`
+              : result?.retryExhausted
+                ? `Stopped after ${result.maxAttempts} attempts.`
+                : undefined
+          }
         />
       );
     },
@@ -839,12 +880,14 @@ function WorkflowToolError({
   fallback,
   details,
   savedRevisionId,
+  retryMessage,
 }: {
   title: string;
   messages?: string[];
   fallback: string;
   details?: string;
   savedRevisionId?: string;
+  retryMessage?: string;
 }) {
   const reasons = messages?.length ? messages : [fallback];
   return (
@@ -855,6 +898,7 @@ function WorkflowToolError({
           Saved as current revision <span className="font-mono">{savedRevisionId.slice(0, 8)}</span>
         </p>
       )}
+      {retryMessage && <p className="mt-1 text-xs font-medium text-rose-800">{retryMessage}</p>}
       <div className={`mt-2 grid gap-3 ${details ? "md:grid-cols-2" : ""}`}>
         <div className="min-w-0 rounded-md bg-white/70 p-2">
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-rose-700">
