@@ -38,6 +38,8 @@ export type WorkflowIssue = {
   severity: "error" | "warning";
   nodeId?: string;
   path?: string;
+  keyword?: string;
+  params?: Record<string, unknown>;
   message: string;
 };
 
