@@ -8,8 +8,22 @@ import {
   convertToModelMessages,
   type UIMessage,
 } from "ai";
+import {
+  isWorkflowRequestMode,
+  workflowToolForRequestMode,
+  type WorkflowRequestMode,
+} from "@/lib/workflow/request-mode";
 
 const getModelName = () => process.env.OLLAMA_MODEL ?? "qwen3:8b";
+
+const modeInstructions: Record<WorkflowRequestMode, string> = {
+  generate:
+    "Active request mode: generate. Call generate_workflow with a complete workflow document. Do not emit the workflow document as conversational text.",
+  modify:
+    "Active request mode: modify. Call propose_workflow_patch with the requested change. Do not emit the patch as conversational text.",
+  explain:
+    "Active request mode: explain. Answer conversationally. No workflow tool is available for this request.",
+};
 
 export async function GET() {
   return Response.json({ provider: "Ollama", model: getModelName() });
@@ -41,11 +55,16 @@ export async function POST(req: Request) {
     messages,
     system,
     tools,
+    requestMode: rawRequestMode,
   }: {
     messages: UIMessage[];
     system?: string;
     tools?: Record<string, { description?: string; parameters: JSONSchema7 }>;
+    requestMode?: unknown;
   } = await req.json();
+  const requestMode: WorkflowRequestMode = isWorkflowRequestMode(rawRequestMode)
+    ? rawRequestMode
+    : "explain";
 
   const ollamaBaseURL = `${(process.env.OLLAMA_BASE_URL ?? "http://localhost:11434").replace(/\/$/, "")}/v1`;
   const ollama = createOpenAI({
@@ -79,26 +98,34 @@ export async function POST(req: Request) {
   const availableTools = frontendTools(tools ?? {});
   const forcedRetryTool =
     retryToolName && retryToolName in availableTools ? retryToolName : undefined;
-  const initialGenerationTool =
-    messages.length === 1 && "generate_workflow" in availableTools
-      ? "generate_workflow"
-      : undefined;
-  const forcedTool = forcedRetryTool ?? initialGenerationTool;
+  const modeTool = requestMode === "explain" ? undefined : workflowToolForRequestMode[requestMode];
+  const forcedTool = forcedRetryTool ?? modeTool;
+  if (forcedTool && !(forcedTool in availableTools)) {
+    return Response.json(
+      { error: `Request mode ${requestMode} requires unavailable tool ${forcedTool}.` },
+      { status: 400 },
+    );
+  }
+  const selectedTools = forcedTool ? { [forcedTool]: availableTools[forcedTool]! } : {};
+  const requestSystem = [system, modeInstructions[requestMode]].filter(Boolean).join("\n\n");
   console.debug("[chat] tool choice", {
-    choice: forcedTool ?? "auto",
+    requestMode,
+    choice: forcedTool ?? "none",
+    activeTools: Object.keys(selectedTools),
     reason: forcedRetryTool
       ? "validation-retry"
-      : initialGenerationTool
-        ? "initial-generation"
-        : "auto",
+      : modeTool
+        ? `request-mode-${requestMode}`
+        : "request-mode-explain",
     timestamp: new Date().toISOString(),
   });
   const result = streamText({
     model: ollama.chat(model),
     messages: modelMessages,
-    system,
-    tools: availableTools,
-    toolChoice: forcedTool ? { type: "tool" as const, toolName: forcedTool } : "auto",
+    system: requestSystem,
+    tools: selectedTools,
+    activeTools: Object.keys(selectedTools),
+    toolChoice: forcedTool ? { type: "tool" as const, toolName: forcedTool } : "none",
     onChunk: ({ chunk }) => {
       if (chunk.type === "text-delta" || chunk.type === "reasoning-delta") {
         console.debug(`[chat] model response ${chunk.type}`, {

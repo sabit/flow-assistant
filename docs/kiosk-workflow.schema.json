@@ -5,7 +5,11 @@
   "description": "Declarative graph-based kiosk workflow. Nodes render through a controlled Flutter component catalogue, values are stored in a shared runtime context, integrations are referenced through named backend operations/providers, and submission-time validation errors are mapped back to workflow bindings for correction.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["version", "start", "nodes"],
+  "required": [
+    "version",
+    "start",
+    "nodes"
+  ],
   "properties": {
     "version": {
       "type": "integer",
@@ -73,30 +77,56 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "en": { "type": "string" },
-        "bn": { "type": "string" }
+        "en": {
+          "type": "string"
+        },
+        "bn": {
+          "type": "string"
+        }
       },
       "minProperties": 1
     },
     "workflowGroup": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["label"],
+      "required": [
+        "label"
+      ],
       "properties": {
-        "label": { "$ref": "#/$defs/localizedText" },
-        "description": { "$ref": "#/$defs/localizedText" },
-        "icon": { "type": "string" },
-        "sequence": { "type": "integer", "minimum": 0 }
+        "label": {
+          "$ref": "#/$defs/localizedText"
+        },
+        "description": {
+          "$ref": "#/$defs/localizedText"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "sequence": {
+          "type": "integer",
+          "minimum": 0
+        }
       }
     },
     "contextField": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["type"],
+      "required": [
+        "type"
+      ],
       "properties": {
         "type": {
           "type": "string",
-          "enum": ["string", "number", "integer", "boolean", "date", "datetime", "object", "array"]
+          "enum": [
+            "string",
+            "number",
+            "integer",
+            "boolean",
+            "date",
+            "datetime",
+            "object",
+            "array"
+          ]
         },
         "semanticType": {
           "type": "string",
@@ -128,181 +158,421 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "title": { "$ref": "#/$defs/localizedText" },
-        "subtitle": { "$ref": "#/$defs/localizedText" },
-        "primaryActionLabel": { "$ref": "#/$defs/localizedText" },
-        "secondaryActionLabel": { "$ref": "#/$defs/localizedText" },
-        "skipActionLabel": { "$ref": "#/$defs/localizedText" },
-        "icon": { "type": "string" },
-        "busyMessage": { "$ref": "#/$defs/localizedText" }
+        "title": {
+          "$ref": "#/$defs/localizedText"
+        },
+        "subtitle": {
+          "$ref": "#/$defs/localizedText"
+        },
+        "primaryActionLabel": {
+          "$ref": "#/$defs/localizedText"
+        },
+        "secondaryActionLabel": {
+          "$ref": "#/$defs/localizedText"
+        },
+        "skipActionLabel": {
+          "$ref": "#/$defs/localizedText"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "busyMessage": {
+          "$ref": "#/$defs/localizedText"
+        }
       }
+    },
+    "dateTemplate": {
+      "description": "An ISO date literal or a workflow expression resolving to a date.",
+      "oneOf": [
+        {
+          "type": "string",
+          "format": "date"
+        },
+        {
+          "$ref": "#/$defs/expression"
+        }
+      ]
     },
     "valueTemplate": {
       "description": "Literal JSON value or a ${...} expression/template string resolved against workflow context. Dates/datetimes are represented as JSON strings; their semantics are declared by the consuming field/context definition.",
       "oneOf": [
-        { "type": "string" },
-        { "type": "number" },
-        { "type": "integer" },
-        { "type": "boolean" },
-        { "type": "null" },
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "integer"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
         {
           "type": "array",
-          "items": { "$ref": "#/$defs/valueTemplate" }
+          "items": {
+            "$ref": "#/$defs/valueTemplate"
+          }
         },
         {
           "type": "object",
-          "additionalProperties": { "$ref": "#/$defs/valueTemplate" }
+          "additionalProperties": {
+            "$ref": "#/$defs/valueTemplate"
+          }
         }
       ]
     },
     "valueMap": {
       "type": "object",
-      "additionalProperties": { "$ref": "#/$defs/valueTemplate" }
+      "additionalProperties": {
+        "$ref": "#/$defs/valueTemplate"
+      }
     },
     "resultMapping": {
       "type": "object",
       "description": "Map workflow context binding path to a backend response selector, typically JSONPath.",
-      "propertyNames": { "$ref": "#/$defs/bindingPath" },
-      "additionalProperties": { "type": "string", "minLength": 1 }
+      "propertyNames": {
+        "$ref": "#/$defs/bindingPath"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      }
     },
     "transition": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["to"],
+      "required": [
+        "to"
+      ],
       "properties": {
-        "when": { "$ref": "#/$defs/expression" },
-        "default": { "type": "boolean", "const": true },
-        "to": { "$ref": "#/$defs/nodeId" }
+        "when": {
+          "$ref": "#/$defs/expression"
+        },
+        "default": {
+          "type": "boolean",
+          "const": true
+        },
+        "to": {
+          "$ref": "#/$defs/nodeId"
+        }
       },
       "oneOf": [
-        { "required": ["when"] },
-        { "required": ["default"] }
+        {
+          "required": [
+            "when"
+          ]
+        },
+        {
+          "required": [
+            "default"
+          ]
+        }
       ]
     },
     "requiredValidator": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["type"],
+      "required": [
+        "type"
+      ],
       "properties": {
-        "type": { "const": "required" },
-        "message": { "$ref": "#/$defs/localizedText" },
-        "onFailure": { "type": "string", "enum": ["block", "warn"], "default": "block" }
+        "type": {
+          "const": "required"
+        },
+        "message": {
+          "$ref": "#/$defs/localizedText"
+        },
+        "onFailure": {
+          "type": "string",
+          "enum": [
+            "block",
+            "warn"
+          ],
+          "default": "block"
+        }
       }
     },
     "regexValidator": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["type", "pattern"],
+      "required": [
+        "type",
+        "pattern"
+      ],
       "properties": {
-        "type": { "const": "regex" },
-        "pattern": { "type": "string", "minLength": 1 },
-        "message": { "$ref": "#/$defs/localizedText" },
-        "onFailure": { "type": "string", "enum": ["block", "warn"], "default": "block" }
+        "type": {
+          "const": "regex"
+        },
+        "pattern": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message": {
+          "$ref": "#/$defs/localizedText"
+        },
+        "onFailure": {
+          "type": "string",
+          "enum": [
+            "block",
+            "warn"
+          ],
+          "default": "block"
+        }
       }
     },
     "lengthValidator": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["type"],
+      "required": [
+        "type"
+      ],
       "properties": {
-        "type": { "const": "length" },
-        "min": { "type": "integer", "minimum": 0 },
-        "max": { "type": "integer", "minimum": 0 },
-        "message": { "$ref": "#/$defs/localizedText" },
-        "onFailure": { "type": "string", "enum": ["block", "warn"], "default": "block" }
+        "type": {
+          "const": "length"
+        },
+        "min": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "message": {
+          "$ref": "#/$defs/localizedText"
+        },
+        "onFailure": {
+          "type": "string",
+          "enum": [
+            "block",
+            "warn"
+          ],
+          "default": "block"
+        }
       },
       "anyOf": [
-        { "required": ["min"] },
-        { "required": ["max"] }
+        {
+          "required": [
+            "min"
+          ]
+        },
+        {
+          "required": [
+            "max"
+          ]
+        }
       ]
     },
     "rangeValidator": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["type"],
+      "required": [
+        "type"
+      ],
       "properties": {
-        "type": { "const": "range" },
-        "min": { "type": "number" },
-        "max": { "type": "number" },
-        "message": { "$ref": "#/$defs/localizedText" },
-        "onFailure": { "type": "string", "enum": ["block", "warn"], "default": "block" }
+        "type": {
+          "const": "range"
+        },
+        "min": {
+          "type": "number"
+        },
+        "max": {
+          "type": "number"
+        },
+        "message": {
+          "$ref": "#/$defs/localizedText"
+        },
+        "onFailure": {
+          "type": "string",
+          "enum": [
+            "block",
+            "warn"
+          ],
+          "default": "block"
+        }
       },
       "anyOf": [
-        { "required": ["min"] },
-        { "required": ["max"] }
+        {
+          "required": [
+            "min"
+          ]
+        },
+        {
+          "required": [
+            "max"
+          ]
+        }
       ]
     },
     "expressionValidator": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["type", "expression"],
+      "required": [
+        "type",
+        "expression"
+      ],
       "properties": {
-        "type": { "const": "expression" },
-        "expression": { "$ref": "#/$defs/expression" },
-        "message": { "$ref": "#/$defs/localizedText" },
-        "onFailure": { "type": "string", "enum": ["block", "warn"], "default": "block" }
+        "type": {
+          "const": "expression"
+        },
+        "expression": {
+          "$ref": "#/$defs/expression"
+        },
+        "message": {
+          "$ref": "#/$defs/localizedText"
+        },
+        "onFailure": {
+          "type": "string",
+          "enum": [
+            "block",
+            "warn"
+          ],
+          "default": "block"
+        }
       }
     },
     "apiValidator": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["type", "operation"],
+      "required": [
+        "type",
+        "operation"
+      ],
       "properties": {
-        "type": { "const": "api" },
-        "operation": { "type": "string", "minLength": 1 },
-        "request": { "$ref": "#/$defs/valueMap" },
-        "validWhen": { "$ref": "#/$defs/expression" },
-        "result": { "$ref": "#/$defs/resultMapping" },
-        "message": { "$ref": "#/$defs/localizedText" },
-        "onFailure": { "type": "string", "enum": ["block", "warn"], "default": "block" }
+        "type": {
+          "const": "api"
+        },
+        "operation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "request": {
+          "$ref": "#/$defs/valueMap"
+        },
+        "validWhen": {
+          "$ref": "#/$defs/expression"
+        },
+        "result": {
+          "$ref": "#/$defs/resultMapping"
+        },
+        "message": {
+          "$ref": "#/$defs/localizedText"
+        },
+        "onFailure": {
+          "type": "string",
+          "enum": [
+            "block",
+            "warn"
+          ],
+          "default": "block"
+        }
       }
     },
     "validator": {
       "oneOf": [
-        { "$ref": "#/$defs/requiredValidator" },
-        { "$ref": "#/$defs/regexValidator" },
-        { "$ref": "#/$defs/lengthValidator" },
-        { "$ref": "#/$defs/rangeValidator" },
-        { "$ref": "#/$defs/expressionValidator" },
-        { "$ref": "#/$defs/apiValidator" }
+        {
+          "$ref": "#/$defs/requiredValidator"
+        },
+        {
+          "$ref": "#/$defs/regexValidator"
+        },
+        {
+          "$ref": "#/$defs/lengthValidator"
+        },
+        {
+          "$ref": "#/$defs/rangeValidator"
+        },
+        {
+          "$ref": "#/$defs/expressionValidator"
+        },
+        {
+          "$ref": "#/$defs/apiValidator"
+        }
       ]
     },
     "documentInputConfig": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["documentTypeCode"],
+      "required": [
+        "documentTypeCode"
+      ],
       "properties": {
-        "documentTypeCode": { "type": "string", "minLength": 1 },
-        "instructionsMarkdown": { "type": "string" },
-        "uploadProvider": { "type": "string", "minLength": 1 },
-        "uploadRequired": { "type": "boolean", "default": false },
-        "maxPages": { "type": "integer", "minimum": 1, "default": 1 },
-        "allowGalleryImport": { "type": "boolean", "default": false },
+        "documentTypeCode": {
+          "type": "string",
+          "minLength": 1
+        },
+        "instructionsMarkdown": {
+          "type": "string"
+        },
+        "uploadProvider": {
+          "type": "string",
+          "minLength": 1
+        },
+        "uploadRequired": {
+          "type": "boolean",
+          "default": false
+        },
+        "maxPages": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1
+        },
+        "allowGalleryImport": {
+          "type": "boolean",
+          "default": false
+        },
         "parserOperation": {
           "type": "string",
           "description": "Named backend operation for OCR/parsing. Arbitrary parser scripts are intentionally not supported."
         },
-        "result": { "$ref": "#/$defs/resultMapping" }
+        "result": {
+          "$ref": "#/$defs/resultMapping"
+        }
       },
       "allOf": [
         {
-          "if": { "properties": { "uploadRequired": { "const": true } }, "required": ["uploadRequired"] },
-          "then": { "required": ["uploadProvider"] }
+          "if": {
+            "properties": {
+              "uploadRequired": {
+                "const": true
+              }
+            },
+            "required": [
+              "uploadRequired"
+            ]
+          },
+          "then": {
+            "required": [
+              "uploadProvider"
+            ]
+          }
         }
       ]
     },
     "biometricInputConfig": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["modality", "mode"],
+      "required": [
+        "modality",
+        "mode"
+      ],
       "properties": {
         "modality": {
           "type": "string",
-          "enum": ["face", "fingerprint"]
+          "enum": [
+            "face",
+            "fingerprint"
+          ]
         },
         "mode": {
           "type": "string",
-          "enum": ["capture"],
+          "enum": [
+            "capture"
+          ],
           "description": "Capture is performed by the kiosk/device adapter. Verification should normally be a subsequent action node invoking a named backend operation."
         },
         "deviceProvider": {
@@ -334,97 +604,213 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "keyboard": { "type": "string", "enum": ["text", "numeric", "decimal", "email", "phone", "url"] },
-        "mask": { "type": "string" },
+        "keyboard": {
+          "type": "string",
+          "enum": [
+            "text",
+            "numeric",
+            "decimal",
+            "email",
+            "phone",
+            "url"
+          ]
+        },
+        "mask": {
+          "type": "string"
+        },
         "maskFilters": {
           "type": "object",
-          "additionalProperties": { "type": "string" }
+          "additionalProperties": {
+            "type": "string"
+          }
         },
-        "hint": { "$ref": "#/$defs/localizedText" },
-        "obscure": { "type": "boolean", "default": false },
-        "minLines": { "type": "integer", "minimum": 1 },
-        "maxLines": { "type": "integer", "minimum": 1 },
-        "dateFormat": { "type": "string" },
-        "minDate": { "type": "string", "format": "date" },
-        "maxDate": { "type": "string", "format": "date" },
-        "nfcCaptureEnabled": { "type": "boolean" },
-        "document": { "$ref": "#/$defs/documentInputConfig" },
-        "biometric": { "$ref": "#/$defs/biometricInputConfig" }
+        "hint": {
+          "$ref": "#/$defs/localizedText"
+        },
+        "obscure": {
+          "type": "boolean",
+          "default": false
+        },
+        "minLines": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxLines": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "dateFormat": {
+          "type": "string"
+        },
+        "minDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "maxDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "nfcCaptureEnabled": {
+          "type": "boolean"
+        },
+        "document": {
+          "$ref": "#/$defs/documentInputConfig"
+        },
+        "biometric": {
+          "$ref": "#/$defs/biometricInputConfig"
+        }
       }
     },
     "optionItem": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["value", "label"],
+      "required": [
+        "value",
+        "label"
+      ],
       "properties": {
-        "value": { "$ref": "#/$defs/valueTemplate" },
-        "label": { "$ref": "#/$defs/localizedText" },
-        "subtitle": { "$ref": "#/$defs/localizedText" },
-        "icon": { "type": "string" },
-        "disabledWhen": { "$ref": "#/$defs/expression" }
+        "value": {
+          "$ref": "#/$defs/valueTemplate"
+        },
+        "label": {
+          "$ref": "#/$defs/localizedText"
+        },
+        "subtitle": {
+          "$ref": "#/$defs/localizedText"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "disabledWhen": {
+          "$ref": "#/$defs/expression"
+        }
       }
     },
     "staticOptions": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["items"],
+      "required": [
+        "items"
+      ],
       "properties": {
         "items": {
           "type": "array",
           "minItems": 1,
-          "items": { "$ref": "#/$defs/optionItem" }
+          "items": {
+            "$ref": "#/$defs/optionItem"
+          }
         }
       }
     },
     "providerOptions": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["provider"],
+      "required": [
+        "provider"
+      ],
       "properties": {
-        "provider": { "type": "string", "minLength": 1 },
-        "request": { "$ref": "#/$defs/valueMap" },
-        "valuePath": { "type": "string" },
-        "labelPath": { "type": "string" },
-        "subtitlePath": { "type": "string" }
+        "provider": {
+          "type": "string",
+          "minLength": 1
+        },
+        "request": {
+          "$ref": "#/$defs/valueMap"
+        },
+        "valuePath": {
+          "type": "string"
+        },
+        "labelPath": {
+          "type": "string"
+        },
+        "subtitlePath": {
+          "type": "string"
+        }
       }
     },
     "optionsSource": {
       "oneOf": [
-        { "$ref": "#/$defs/staticOptions" },
-        { "$ref": "#/$defs/providerOptions" }
+        {
+          "$ref": "#/$defs/staticOptions"
+        },
+        {
+          "$ref": "#/$defs/providerOptions"
+        }
       ]
     },
     "retryPolicy": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "maxAttempts": { "type": "integer", "minimum": 1, "default": 1 },
-        "delayMs": { "type": "integer", "minimum": 0, "default": 0 }
+        "maxAttempts": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1
+        },
+        "delayMs": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        }
       }
     },
     "editTarget": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "binding": { "$ref": "#/$defs/bindingPath" },
-        "group": { "$ref": "#/$defs/groupId" }
+        "binding": {
+          "$ref": "#/$defs/bindingPath"
+        },
+        "group": {
+          "$ref": "#/$defs/groupId"
+        }
       },
       "oneOf": [
-        { "required": ["binding"] },
-        { "required": ["group"] }
+        {
+          "required": [
+            "binding"
+          ]
+        },
+        {
+          "required": [
+            "group"
+          ]
+        }
       ]
     },
     "summaryItem": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["label", "value"],
+      "required": [
+        "label",
+        "value"
+      ],
       "properties": {
-        "label": { "$ref": "#/$defs/localizedText" },
-        "value": { "$ref": "#/$defs/valueTemplate" },
-        "format": { "type": "string", "enum": ["text", "date", "datetime", "number", "currency", "masked"] },
-        "mask": { "type": "string" },
-        "visibleWhen": { "$ref": "#/$defs/expression" },
-        "edit": { "$ref": "#/$defs/editTarget" }
+        "label": {
+          "$ref": "#/$defs/localizedText"
+        },
+        "value": {
+          "$ref": "#/$defs/valueTemplate"
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "text",
+            "date",
+            "datetime",
+            "number",
+            "currency",
+            "masked"
+          ]
+        },
+        "mask": {
+          "type": "string"
+        },
+        "visibleWhen": {
+          "$ref": "#/$defs/expression"
+        },
+        "edit": {
+          "$ref": "#/$defs/editTarget"
+        }
       }
     },
     "fieldCorrectionPolicy": {
@@ -433,17 +819,27 @@
       "properties": {
         "mode": {
           "type": "string",
-          "enum": ["field_correction", "error_result"],
+          "enum": [
+            "field_correction",
+            "error_result"
+          ],
           "default": "field_correction"
         },
         "singleErrorBehavior": {
           "type": "string",
-          "enum": ["jump_to_field", "show_summary"],
+          "enum": [
+            "jump_to_field",
+            "show_summary"
+          ],
           "default": "jump_to_field"
         },
         "multipleErrorBehavior": {
           "type": "string",
-          "enum": ["correction_queue", "show_summary", "first_error"],
+          "enum": [
+            "correction_queue",
+            "show_summary",
+            "first_error"
+          ],
           "default": "correction_queue"
         },
         "returnTo": {
@@ -513,59 +909,160 @@
       "discriminator": {
         "propertyName": "type"
       },
-      "required": ["type"],
+      "required": [
+        "type"
+      ],
       "oneOf": [
-        { "$ref": "#/$defs/inputNode" },
-        { "$ref": "#/$defs/selectionNode" },
-        { "$ref": "#/$defs/displayNode" },
-        { "$ref": "#/$defs/actionNode" },
-        { "$ref": "#/$defs/confirmationNode" },
-        { "$ref": "#/$defs/submitNode" },
-        { "$ref": "#/$defs/resultNode" }
+        {
+          "$ref": "#/$defs/inputNode"
+        },
+        {
+          "$ref": "#/$defs/selectionNode"
+        },
+        {
+          "$ref": "#/$defs/displayNode"
+        },
+        {
+          "$ref": "#/$defs/actionNode"
+        },
+        {
+          "$ref": "#/$defs/confirmationNode"
+        },
+        {
+          "$ref": "#/$defs/submitNode"
+        },
+        {
+          "$ref": "#/$defs/resultNode"
+        }
       ]
     },
     "inputNode": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["type", "component", "binding"],
+      "required": [
+        "type",
+        "component",
+        "binding"
+      ],
       "properties": {
-        "type": { "const": "input" },
+        "type": {
+          "const": "input"
+        },
         "component": {
           "type": "string",
-          "enum": ["text", "multiline_text", "number", "date", "datetime", "otp", "card", "document", "biometric"]
+          "enum": [
+            "text",
+            "multiline_text",
+            "number",
+            "date",
+            "datetime",
+            "otp",
+            "card",
+            "document",
+            "biometric"
+          ]
         },
-        "binding": { "$ref": "#/$defs/bindingPath" },
-        "semanticType": { "type": "string" },
-        "group": { "$ref": "#/$defs/groupId" },
-        "presentation": { "$ref": "#/$defs/presentation" },
-        "input": { "$ref": "#/$defs/inputConfig" },
+        "binding": {
+          "$ref": "#/$defs/bindingPath"
+        },
+        "semanticType": {
+          "type": "string"
+        },
+        "group": {
+          "$ref": "#/$defs/groupId"
+        },
+        "presentation": {
+          "$ref": "#/$defs/presentation"
+        },
+        "input": {
+          "$ref": "#/$defs/inputConfig"
+        },
         "validation": {
           "type": "array",
-          "items": { "$ref": "#/$defs/validator" }
+          "items": {
+            "$ref": "#/$defs/validator"
+          }
         },
-        "skippable": { "type": "boolean", "default": false },
-        "skipWhen": { "$ref": "#/$defs/expression" },
-        "skipTo": { "$ref": "#/$defs/nodeId" },
-        "next": { "$ref": "#/$defs/nodeId" },
-        "transitions": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/transition" } }
+        "skippable": {
+          "type": "boolean",
+          "default": false
+        },
+        "skipWhen": {
+          "$ref": "#/$defs/expression"
+        },
+        "skipTo": {
+          "$ref": "#/$defs/nodeId"
+        },
+        "next": {
+          "$ref": "#/$defs/nodeId"
+        },
+        "transitions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/transition"
+          }
+        }
       },
       "oneOf": [
-        { "required": ["next"] },
-        { "required": ["transitions"] }
+        {
+          "required": [
+            "next"
+          ]
+        },
+        {
+          "required": [
+            "transitions"
+          ]
+        }
       ],
       "allOf": [
         {
-          "if": { "properties": { "component": { "const": "document" } }, "required": ["component"] },
+          "if": {
+            "properties": {
+              "component": {
+                "const": "document"
+              }
+            },
+            "required": [
+              "component"
+            ]
+          },
           "then": {
-            "required": ["input"],
-            "properties": { "input": { "required": ["document"] } }
+            "required": [
+              "input"
+            ],
+            "properties": {
+              "input": {
+                "required": [
+                  "document"
+                ]
+              }
+            }
           }
         },
         {
-          "if": { "properties": { "component": { "const": "biometric" } }, "required": ["component"] },
+          "if": {
+            "properties": {
+              "component": {
+                "const": "biometric"
+              }
+            },
+            "required": [
+              "component"
+            ]
+          },
           "then": {
-            "required": ["input"],
-            "properties": { "input": { "required": ["biometric"] } }
+            "required": [
+              "input"
+            ],
+            "properties": {
+              "input": {
+                "required": [
+                  "biometric"
+                ]
+              }
+            }
           }
         }
       ]
@@ -573,117 +1070,284 @@
     "selectionNode": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["type", "binding", "options"],
+      "required": [
+        "type",
+        "binding",
+        "options"
+      ],
       "properties": {
-        "type": { "const": "selection" },
-        "binding": { "$ref": "#/$defs/bindingPath" },
-        "semanticType": { "type": "string" },
-        "group": { "$ref": "#/$defs/groupId" },
-        "presentation": { "$ref": "#/$defs/presentation" },
-        "options": { "$ref": "#/$defs/optionsSource" },
-        "minSelections": { "type": "integer", "minimum": 0, "default": 1 },
-        "maxSelections": { "type": "integer", "minimum": 1, "default": 1 },
-        "validation": { "type": "array", "items": { "$ref": "#/$defs/validator" } },
-        "skippable": { "type": "boolean", "default": false },
-        "skipWhen": { "$ref": "#/$defs/expression" },
-        "skipTo": { "$ref": "#/$defs/nodeId" },
-        "next": { "$ref": "#/$defs/nodeId" },
-        "transitions": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/transition" } }
+        "type": {
+          "const": "selection"
+        },
+        "binding": {
+          "$ref": "#/$defs/bindingPath"
+        },
+        "semanticType": {
+          "type": "string"
+        },
+        "group": {
+          "$ref": "#/$defs/groupId"
+        },
+        "presentation": {
+          "$ref": "#/$defs/presentation"
+        },
+        "options": {
+          "$ref": "#/$defs/optionsSource"
+        },
+        "minSelections": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 1
+        },
+        "maxSelections": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1
+        },
+        "validation": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/validator"
+          }
+        },
+        "skippable": {
+          "type": "boolean",
+          "default": false
+        },
+        "skipWhen": {
+          "$ref": "#/$defs/expression"
+        },
+        "skipTo": {
+          "$ref": "#/$defs/nodeId"
+        },
+        "next": {
+          "$ref": "#/$defs/nodeId"
+        },
+        "transitions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/transition"
+          }
+        }
       },
       "oneOf": [
-        { "required": ["next"] },
-        { "required": ["transitions"] }
+        {
+          "required": [
+            "next"
+          ]
+        },
+        {
+          "required": [
+            "transitions"
+          ]
+        }
       ]
     },
     "displayContent": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "markdown": { "$ref": "#/$defs/localizedText" },
-        "htmlProvider": { "type": "string", "minLength": 1 },
-        "providerRequest": { "$ref": "#/$defs/valueMap" }
+        "markdown": {
+          "$ref": "#/$defs/localizedText"
+        },
+        "htmlProvider": {
+          "type": "string",
+          "minLength": 1
+        },
+        "providerRequest": {
+          "$ref": "#/$defs/valueMap"
+        }
       },
       "oneOf": [
-        { "required": ["markdown"] },
-        { "required": ["htmlProvider"] }
+        {
+          "required": [
+            "markdown"
+          ]
+        },
+        {
+          "required": [
+            "htmlProvider"
+          ]
+        }
       ]
     },
     "displayNode": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["type", "content", "next"],
+      "required": [
+        "type",
+        "content",
+        "next"
+      ],
       "properties": {
-        "type": { "const": "display" },
-        "variant": { "type": "string", "enum": ["notice", "information", "terms", "warning"] },
-        "group": { "$ref": "#/$defs/groupId" },
-        "presentation": { "$ref": "#/$defs/presentation" },
-        "content": { "$ref": "#/$defs/displayContent" },
-        "acknowledgementBinding": { "$ref": "#/$defs/bindingPath" },
-        "skippable": { "type": "boolean", "default": false },
-        "skipWhen": { "$ref": "#/$defs/expression" },
-        "skipTo": { "$ref": "#/$defs/nodeId" },
-        "next": { "$ref": "#/$defs/nodeId" }
+        "type": {
+          "const": "display"
+        },
+        "variant": {
+          "type": "string",
+          "enum": [
+            "notice",
+            "information",
+            "terms",
+            "warning"
+          ]
+        },
+        "group": {
+          "$ref": "#/$defs/groupId"
+        },
+        "presentation": {
+          "$ref": "#/$defs/presentation"
+        },
+        "content": {
+          "$ref": "#/$defs/displayContent"
+        },
+        "acknowledgementBinding": {
+          "$ref": "#/$defs/bindingPath"
+        },
+        "skippable": {
+          "type": "boolean",
+          "default": false
+        },
+        "skipWhen": {
+          "$ref": "#/$defs/expression"
+        },
+        "skipTo": {
+          "$ref": "#/$defs/nodeId"
+        },
+        "next": {
+          "$ref": "#/$defs/nodeId"
+        }
       }
     },
     "actionNode": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["type", "operation", "next"],
+      "required": [
+        "type",
+        "operation",
+        "next"
+      ],
       "properties": {
-        "type": { "const": "action" },
-        "operation": { "type": "string", "minLength": 1 },
-        "group": { "$ref": "#/$defs/groupId" },
-        "presentation": { "$ref": "#/$defs/presentation" },
-        "request": { "$ref": "#/$defs/valueMap" },
-        "result": { "$ref": "#/$defs/resultMapping" },
-        "retry": { "$ref": "#/$defs/retryPolicy" },
-        "skipWhen": { "$ref": "#/$defs/expression" },
-        "skipTo": { "$ref": "#/$defs/nodeId" },
-        "next": { "$ref": "#/$defs/nodeId" },
-        "onFailure": { "$ref": "#/$defs/nodeId" }
+        "type": {
+          "const": "action"
+        },
+        "operation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "group": {
+          "$ref": "#/$defs/groupId"
+        },
+        "presentation": {
+          "$ref": "#/$defs/presentation"
+        },
+        "request": {
+          "$ref": "#/$defs/valueMap"
+        },
+        "result": {
+          "$ref": "#/$defs/resultMapping"
+        },
+        "retry": {
+          "$ref": "#/$defs/retryPolicy"
+        },
+        "skipWhen": {
+          "$ref": "#/$defs/expression"
+        },
+        "skipTo": {
+          "$ref": "#/$defs/nodeId"
+        },
+        "next": {
+          "$ref": "#/$defs/nodeId"
+        },
+        "onFailure": {
+          "$ref": "#/$defs/nodeId"
+        }
       }
     },
     "confirmationNode": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["type", "summary", "next"],
+      "required": [
+        "type",
+        "summary",
+        "next"
+      ],
       "properties": {
-        "type": { "const": "confirmation" },
-        "presentation": { "$ref": "#/$defs/presentation" },
+        "type": {
+          "const": "confirmation"
+        },
+        "presentation": {
+          "$ref": "#/$defs/presentation"
+        },
         "summary": {
           "type": "array",
           "minItems": 1,
-          "items": { "$ref": "#/$defs/summaryItem" }
+          "items": {
+            "$ref": "#/$defs/summaryItem"
+          }
         },
         "allowEdit": {
           "type": "boolean",
           "default": true,
           "description": "If true, summary items with edit targets may jump directly to their field/group and return here afterwards."
         },
-        "next": { "$ref": "#/$defs/nodeId" }
+        "next": {
+          "$ref": "#/$defs/nodeId"
+        }
       }
     },
     "submitNode": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["type", "operation", "onSuccess", "onFailure"],
+      "required": [
+        "type",
+        "operation",
+        "onSuccess",
+        "onFailure"
+      ],
       "properties": {
-        "type": { "const": "submit" },
-        "operation": { "type": "string", "minLength": 1 },
-        "presentation": { "$ref": "#/$defs/presentation" },
+        "type": {
+          "const": "submit"
+        },
+        "operation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "presentation": {
+          "$ref": "#/$defs/presentation"
+        },
         "request": {
           "oneOf": [
-            { "$ref": "#/$defs/valueMap" },
-            { "$ref": "#/$defs/expression" }
+            {
+              "$ref": "#/$defs/valueMap"
+            },
+            {
+              "$ref": "#/$defs/expression"
+            }
           ]
         },
-        "result": { "$ref": "#/$defs/resultMapping" },
-        "retry": { "$ref": "#/$defs/retryPolicy" },
-        "responseContract": { "$ref": "#/$defs/normalizedSubmissionContract" },
-        "validationErrorHandling": { "$ref": "#/$defs/fieldCorrectionPolicy" },
-        "onSuccess": { "$ref": "#/$defs/nodeId" },
-        "onBusinessError": { "$ref": "#/$defs/nodeId" },
-        "onSystemError": { "$ref": "#/$defs/nodeId" },
+        "result": {
+          "$ref": "#/$defs/resultMapping"
+        },
+        "retry": {
+          "$ref": "#/$defs/retryPolicy"
+        },
+        "responseContract": {
+          "$ref": "#/$defs/normalizedSubmissionContract"
+        },
+        "validationErrorHandling": {
+          "$ref": "#/$defs/fieldCorrectionPolicy"
+        },
+        "onSuccess": {
+          "$ref": "#/$defs/nodeId"
+        },
+        "onBusinessError": {
+          "$ref": "#/$defs/nodeId"
+        },
+        "onSystemError": {
+          "$ref": "#/$defs/nodeId"
+        },
         "onFailure": {
           "$ref": "#/$defs/nodeId",
           "description": "General fallback target when the response cannot be classified more specifically."
@@ -693,15 +1357,40 @@
     "resultNode": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["type", "variant"],
+      "required": [
+        "type",
+        "variant"
+      ],
       "properties": {
-        "type": { "const": "result" },
-        "variant": { "type": "string", "enum": ["success", "error", "unavailable", "cancelled"] },
-        "presentation": { "$ref": "#/$defs/presentation" },
-        "content": { "$ref": "#/$defs/localizedText" },
-        "reference": { "$ref": "#/$defs/valueTemplate" },
-        "issueQueueToken": { "type": "boolean", "default": false },
-        "autoCloseSeconds": { "type": "integer", "minimum": 1 }
+        "type": {
+          "const": "result"
+        },
+        "variant": {
+          "type": "string",
+          "enum": [
+            "success",
+            "error",
+            "unavailable",
+            "cancelled"
+          ]
+        },
+        "presentation": {
+          "$ref": "#/$defs/presentation"
+        },
+        "content": {
+          "$ref": "#/$defs/localizedText"
+        },
+        "reference": {
+          "$ref": "#/$defs/valueTemplate"
+        },
+        "issueQueueToken": {
+          "type": "boolean",
+          "default": false
+        },
+        "autoCloseSeconds": {
+          "type": "integer",
+          "minimum": 1
+        }
       }
     }
   },
@@ -711,21 +1400,47 @@
       "description": "Account request with face verification and submission-time field correction",
       "groups": {
         "identity": {
-          "label": { "en": "Identity", "bn": "পরিচয়" },
+          "label": {
+            "en": "Identity",
+            "bn": "পরিচয়"
+          },
           "sequence": 10
         },
         "address": {
-          "label": { "en": "Address", "bn": "ঠিকানা" },
+          "label": {
+            "en": "Address",
+            "bn": "ঠিকানা"
+          },
           "sequence": 20
         }
       },
       "contextSchema": {
-        "customer.id": { "type": "string", "semanticType": "CUSTOMER_ID", "sensitive": true },
-        "biometric.face.captureRef": { "type": "string", "semanticType": "BIOMETRIC_CAPTURE_REF", "sensitive": true, "persist": false },
-        "biometric.face.verified": { "type": "boolean", "persist": false },
-        "request.mothersMaidenName": { "type": "string", "sensitive": true },
-        "request.address.postcode": { "type": "string" },
-        "system.requestId": { "type": "string", "semanticType": "REQUEST_ID" }
+        "customer.id": {
+          "type": "string",
+          "semanticType": "CUSTOMER_ID",
+          "sensitive": true
+        },
+        "biometric.face.captureRef": {
+          "type": "string",
+          "semanticType": "BIOMETRIC_CAPTURE_REF",
+          "sensitive": true,
+          "persist": false
+        },
+        "biometric.face.verified": {
+          "type": "boolean",
+          "persist": false
+        },
+        "request.mothersMaidenName": {
+          "type": "string",
+          "sensitive": true
+        },
+        "request.address.postcode": {
+          "type": "string"
+        },
+        "system.requestId": {
+          "type": "string",
+          "semanticType": "REQUEST_ID"
+        }
       },
       "start": "capture_face",
       "nodes": {
@@ -735,8 +1450,13 @@
           "binding": "biometric.face.captureRef",
           "group": "identity",
           "presentation": {
-            "title": { "en": "Verify your identity", "bn": "আপনার পরিচয় যাচাই করুন" },
-            "subtitle": { "en": "Look directly at the camera" }
+            "title": {
+              "en": "Verify your identity",
+              "bn": "আপনার পরিচয় যাচাই করুন"
+            },
+            "subtitle": {
+              "en": "Look directly at the camera"
+            }
           },
           "input": {
             "biometric": {
@@ -769,10 +1489,14 @@
           "binding": "request.mothersMaidenName",
           "group": "identity",
           "presentation": {
-            "title": { "en": "Mother's maiden name" }
+            "title": {
+              "en": "Mother's maiden name"
+            }
           },
           "validation": [
-            { "type": "required" }
+            {
+              "type": "required"
+            }
           ],
           "next": "postcode"
         },
@@ -782,10 +1506,14 @@
           "binding": "request.address.postcode",
           "group": "address",
           "presentation": {
-            "title": { "en": "Postcode" }
+            "title": {
+              "en": "Postcode"
+            }
           },
           "validation": [
-            { "type": "required" }
+            {
+              "type": "required"
+            }
           ],
           "next": "confirm"
         },
@@ -793,14 +1521,22 @@
           "type": "confirmation",
           "summary": [
             {
-              "label": { "en": "Mother's maiden name" },
+              "label": {
+                "en": "Mother's maiden name"
+              },
               "value": "${request.mothersMaidenName}",
-              "edit": { "binding": "request.mothersMaidenName" }
+              "edit": {
+                "binding": "request.mothersMaidenName"
+              }
             },
             {
-              "label": { "en": "Postcode" },
+              "label": {
+                "en": "Postcode"
+              },
               "value": "${request.address.postcode}",
-              "edit": { "group": "address" }
+              "edit": {
+                "group": "address"
+              }
             }
           ],
           "next": "submit"
@@ -829,18 +1565,24 @@
         "success": {
           "type": "result",
           "variant": "success",
-          "content": { "en": "Your request has been submitted." },
+          "content": {
+            "en": "Your request has been submitted."
+          },
           "reference": "${system.requestId}"
         },
         "biometric_error": {
           "type": "result",
           "variant": "error",
-          "content": { "en": "We could not verify your identity." }
+          "content": {
+            "en": "We could not verify your identity."
+          }
         },
         "submission_error": {
           "type": "result",
           "variant": "error",
-          "content": { "en": "We could not submit your request." }
+          "content": {
+            "en": "We could not submit your request."
+          }
         }
       }
     }

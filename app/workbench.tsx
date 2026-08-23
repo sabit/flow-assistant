@@ -28,6 +28,7 @@ import { Thread } from "@/components/assistant-ui/thread";
 import { WorkflowJsonViewer } from "@/components/workflow-json-viewer";
 import { workflowAdapter } from "@/lib/workflow/adapter";
 import { workflowToMermaid } from "@/lib/workflow/mermaid";
+import type { WorkflowRequestMode } from "@/lib/workflow/request-mode";
 import { workflowDb } from "@/lib/workflow/store";
 import type {
   JsonPatchOperation,
@@ -44,10 +45,9 @@ import { validateWorkflow } from "@/lib/workflow/validation";
 const initialWorkflow = sampleWorkflow as WorkflowDocument;
 const now = () => new Date().toISOString();
 const newId = () => crypto.randomUUID();
-const maxGenerationAttempts = 3;
-
 const assistantInstructions = `You are the workflow authoring assistant. Workflow documents are immutable browser-side revisions; you never mutate them directly.
-For a request to generate a fresh workflow from business requirements, call generate_workflow with the complete workflow document. Its input schema is the complete kiosk workflow JSON Schema. If the tool returns status "invalid" with retryRequired true, silently correct the complete document from the structured validation errors and call generate_workflow again. The application limits and schedules retries. Do not respond between attempts and do not ask to build one node at a time.
+Do not populate optional properties unless required by the business requirement or necessary for the workflow.
+For a request to generate a fresh workflow from business requirements, call generate_workflow with the complete workflow document. Its input schema is the complete kiosk workflow JSON Schema. If the tool returns status "invalid" with retryRequired true, silently correct the complete document from the structured validation errors and call generate_workflow again. Do not respond between attempts and do not ask to build one node at a time.
 For a requested modification to an existing workflow, inspect the provided revision-aware context and call propose_workflow_patch exactly once with an RFC 6902 JSON Patch and the exact baseRevisionId. Do not call either tool when the request is only explanatory. Use narrow patches for edits, preserve schema validity, and describe changes concisely. Valid changes are saved automatically as immutable revisions.`;
 
 const nodeShapeReference = {
@@ -108,7 +108,13 @@ const attachmentLabel = (
   return `Node · ${node ? (node.presentation?.title?.en ?? node.binding ?? attachment.nodeId) : attachment.nodeId}`;
 };
 
-export function WorkflowWorkbench() {
+export function WorkflowWorkbench({
+  requestMode,
+  onRequestModeChange,
+}: {
+  requestMode: WorkflowRequestMode;
+  onRequestModeChange: (mode: WorkflowRequestMode) => void;
+}) {
   const [workflow, setWorkflow] = useState<WorkflowDocument>(initialWorkflow);
   const [workflowRecord, setWorkflowRecord] = useState<WorkflowRecord>();
   const [currentRevision, setCurrentRevision] = useState<WorkflowRevision>();
@@ -124,14 +130,7 @@ export function WorkflowWorkbench() {
   const [notice, setNotice] = useState<string>();
   const [hydrated, setHydrated] = useState(false);
   const [modelInfo, setModelInfo] = useState<{ provider: string; model: string }>();
-  const latestUserMessageId = useAuiState((state) => {
-    for (let index = state.thread.messages.length - 1; index >= 0; index -= 1) {
-      const message = state.thread.messages[index];
-      if (message?.role === "user") return message.id;
-    }
-    return undefined;
-  });
-  const generationAttemptRef = useRef<{ requestId?: string; count: number }>({ count: 0 });
+  const assistantIsRunning = useAuiState((state) => state.thread.isRunning);
   const issues = useMemo(() => validateWorkflow(workflow), [workflow]);
 
   const activate = useCallback(
@@ -275,6 +274,12 @@ export function WorkflowWorkbench() {
     return () => controller.abort();
   }, []);
 
+  useEffect(() => {
+    if (!attachment && requestMode === "modify") {
+      onRequestModeChange("explain");
+    }
+  }, [attachment, onRequestModeChange, requestMode]);
+
   useAssistantInstructions(assistantInstructions);
   useAssistantContext({
     getContext: () => {
@@ -302,10 +307,7 @@ export function WorkflowWorkbench() {
       status: string;
       validation: string;
       errors: WorkflowIssue[];
-      attempt: number;
-      maxAttempts: number;
       retryRequired: boolean;
-      retryExhausted?: boolean;
       correctionInstructions?: string;
       nodeShapeReference?: typeof nodeShapeReference;
       savedRevisionId?: string;
@@ -316,15 +318,10 @@ export function WorkflowWorkbench() {
       "Generate a complete new kiosk workflow from the user's business requirements. The arguments must be the full workflow document and conform to the supplied JSON Schema. A valid workflow is saved automatically as a new immutable revision.",
     parameters: workflowSchema as unknown as JSONSchema7,
     execute: async (generatedWorkflow) => {
-      if (generationAttemptRef.current.requestId !== latestUserMessageId) {
-        generationAttemptRef.current = { requestId: latestUserMessageId, count: 0 };
-      }
-      const attempt = generationAttemptRef.current.count + 1;
-      generationAttemptRef.current.count = attempt;
       const issues = validateWorkflow(generatedWorkflow);
       const errors = issues.filter((issue) => issue.severity === "error");
       const hasErrors = errors.length > 0;
-      const retryRequired = hasErrors && attempt < maxGenerationAttempts;
+      const retryRequired = hasErrors;
       let savedRevisionId: string | undefined;
       if (!hasErrors) {
         const revision = await createRevision(
@@ -342,18 +339,14 @@ export function WorkflowWorkbench() {
         status: hasErrors ? "invalid" : "applied",
         validation: issueSummary(issues),
         errors,
-        attempt,
-        maxAttempts: maxGenerationAttempts,
         retryRequired,
         savedRevisionId,
         ...(hasErrors
           ? {
-              retryExhausted: !retryRequired,
-              correctionInstructions: retryRequired
-                ? "Correct every structured validation error in the same complete document. The next turn is forced to call generate_workflow; do not emit conversational text."
-                : "Automatic correction stopped after the maximum attempts. Do not call generate_workflow again unless the user requests another attempt.",
-              nodeShapeReference,
-            }
+            correctionInstructions:
+              "Correct every structured validation error in the same complete document. The next turn is forced to call generate_workflow; do not emit conversational text.",
+            nodeShapeReference,
+          }
           : {}),
       };
     },
@@ -365,14 +358,18 @@ export function WorkflowWorkbench() {
           </div>
         );
       }
-      if (status.type === "complete" && result?.status === "applied") return null;
+      if (status.type === "complete" && result?.status === "applied") {
+        return (
+          <WorkflowToolSuccess
+            title="Workflow generated"
+            message="The validated workflow was saved as a new revision."
+            revisionId={result.savedRevisionId}
+          />
+        );
+      }
       return (
         <WorkflowToolError
-          title={
-            result?.retryRequired
-              ? `Correcting workflow · attempt ${result.attempt} of ${result.maxAttempts}`
-              : "Workflow generation failed"
-          }
+          title={result?.retryRequired ? "Correcting workflow" : "Workflow generation failed"}
           messages={result?.errors.map((issue) => issue.message)}
           fallback={
             status.type === "incomplete"
@@ -381,13 +378,7 @@ export function WorkflowWorkbench() {
           }
           details={argsText}
           savedRevisionId={result?.savedRevisionId}
-          retryMessage={
-            result?.retryRequired
-              ? `Retrying automatically (${result.attempt + 1} of ${result.maxAttempts})…`
-              : result?.retryExhausted
-                ? `Stopped after ${result.maxAttempts} attempts.`
-                : undefined
-          }
+          retryMessage={result?.retryRequired ? "Retrying automatically…" : undefined}
         />
       );
     },
@@ -450,8 +441,21 @@ export function WorkflowWorkbench() {
       const toolResult = result as
         | { status?: string; message?: string; errors?: string[] }
         | undefined;
-      if (status.type === "running") return null;
-      if (status.type === "complete" && toolResult?.status === "applied") return null;
+      if (status.type === "running") {
+        return (
+          <div className="my-3 rounded-xl border border-cyan-200 bg-cyan-50 p-3 text-xs text-cyan-900">
+            Preparing and validating workflow changes…
+          </div>
+        );
+      }
+      if (status.type === "complete" && toolResult?.status === "applied") {
+        return (
+          <WorkflowToolSuccess
+            title="Workflow updated"
+            message="The validated change was saved as a new revision."
+          />
+        );
+      }
       return (
         <WorkflowToolError
           title="Workflow edit failed"
@@ -509,6 +513,15 @@ export function WorkflowWorkbench() {
     ? revisions.find((item) => item.id === attachment.revisionId)
     : undefined;
   const selectedNode = selection?.type === "node" ? workflow.nodes[selection.nodeId] : undefined;
+  const requestModes: Array<{
+    mode: WorkflowRequestMode;
+    label: string;
+    disabled?: boolean;
+  }> = [
+      { mode: "generate", label: "Generate" },
+      { mode: "modify", label: "Edit", disabled: !attachment },
+      { mode: "explain", label: "Ask" },
+    ];
 
   return (
     <main className="flex h-dvh min-w-0 flex-col bg-slate-50 text-slate-950">
@@ -605,19 +618,21 @@ export function WorkflowWorkbench() {
                   nodeId={selection.nodeId}
                   node={selectedNode}
                   workflow={workflow}
-                  onAttach={() =>
-                    currentRevision &&
-                    setAttachment(selectionToAttachment(selection, currentRevision.id))
-                  }
+                  onAttach={() => {
+                    if (!currentRevision) return;
+                    setAttachment(selectionToAttachment(selection, currentRevision.id));
+                    onRequestModeChange("modify");
+                  }}
                 />
               ) : selection?.type === "group" ? (
                 <GroupInspector
                   groupId={selection.groupId}
                   workflow={workflow}
-                  onAttach={() =>
-                    currentRevision &&
-                    setAttachment(selectionToAttachment(selection, currentRevision.id))
-                  }
+                  onAttach={() => {
+                    if (!currentRevision) return;
+                    setAttachment(selectionToAttachment(selection, currentRevision.id));
+                    onRequestModeChange("modify");
+                  }}
                 />
               ) : null}
             </aside>
@@ -655,6 +670,39 @@ export function WorkflowWorkbench() {
                 >
                   <X size={14} />
                 </button>
+              </div>
+            )}
+            <div className="mx-3 mt-3 flex rounded-lg border border-slate-200 bg-slate-50 p-1">
+              {requestModes.map(({ mode, label, disabled }) => (
+                <button
+                  key={mode}
+                  type="button"
+                  disabled={disabled}
+                  aria-pressed={requestMode === mode}
+                  onClick={() => onRequestModeChange(mode)}
+                  className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${requestMode === mode
+                      ? "bg-white text-slate-950 shadow-sm"
+                      : "text-slate-500 hover:text-slate-800"
+                    }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {assistantIsRunning && (
+              <div
+                role="status"
+                aria-live="polite"
+                className="mx-3 mt-2 flex items-start gap-2 rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs text-cyan-950"
+              >
+                <span className="mt-1 h-2 w-2 shrink-0 animate-pulse rounded-full bg-cyan-500" />
+                <span>
+                  {requestMode === "generate"
+                    ? "Generating workflow and preparing the tool call…"
+                    : requestMode === "modify"
+                      ? "Preparing workflow changes and the tool call…"
+                      : "Preparing an answer…"}
+                </span>
               </div>
             )}
             <div className="min-h-0 flex-1">
@@ -917,6 +965,31 @@ function WorkflowToolError({
             </p>
             <HighlightedJson source={details} />
           </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function WorkflowToolSuccess({
+  title,
+  message,
+  revisionId,
+}: {
+  title: string;
+  message: string;
+  revisionId?: string;
+}) {
+  return (
+    <div className="my-3 flex gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-emerald-950">
+      <Check className="mt-0.5 shrink-0 text-emerald-700" size={16} />
+      <div>
+        <p className="text-xs font-semibold">{title}</p>
+        <p className="mt-0.5 text-xs text-emerald-800">{message}</p>
+        {revisionId && (
+          <p className="mt-1 font-mono text-[10px] text-emerald-700">
+            Revision {revisionId.slice(0, 8)}
+          </p>
         )}
       </div>
     </div>
