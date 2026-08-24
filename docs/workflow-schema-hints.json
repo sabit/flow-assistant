@@ -1,0 +1,163 @@
+{
+  "description": "Fix hints attached to workflow tool validation errors. A rule matches when every provided field equals the issue (keyword, params) or its regex matches the issue path/message. First matching rule wins, so order specific rules before generic ones.",
+  "rules": [
+    {
+      "when": { "keyword": "const", "path": "^/version$" },
+      "hint": "\"version\" must be the integer 2."
+    },
+    {
+      "when": { "keyword": "required", "path": "^$" },
+      "hint": "Every workflow document needs \"version\": 2, a \"start\" node id, and a non-empty \"nodes\" object."
+    },
+    {
+      "when": { "keyword": "minProperties", "path": "^/nodes$" },
+      "hint": "\"nodes\" must contain at least one node; generate every node the flow walks through, ending in a result node."
+    },
+    {
+      "when": { "keyword": "pattern", "path": "^/start$" },
+      "hint": "\"start\" must be a node id matching ^[A-Za-z][A-Za-z0-9_-]*$ and reference an existing key of \"nodes\"."
+    },
+    {
+      "when": { "keyword": "pattern", "path": "^/nodes/[^/]+$" },
+      "hint": "Node ids (keys of \"nodes\") must match ^[A-Za-z][A-Za-z0-9_-]*$; all references must use these exact ids."
+    },
+    {
+      "when": { "keyword": "pattern", "path": "/to$" },
+      "hint": "Transition targets (\"to\", \"next\", \"onSuccess\", \"onFailure\", \"skipTo\") must be existing node ids matching ^[A-Za-z][A-Za-z0-9_-]*$. Do not use \"${...}\" expressions here."
+    },
+    {
+      "when": { "keyword": "required", "params": { "missingProperty": "binding" } },
+      "hint": "Input and selection nodes must declare a dot-separated context \"binding\" such as \"request.customerId\"; add a matching field to \"contextSchema\"."
+    },
+    {
+      "when": { "keyword": "required", "params": { "missingProperty": "component" } },
+      "hint": "Input nodes require a \"component\" from: text, multiline_text, number, date, datetime, otp, card, document, biometric."
+    },
+    {
+      "when": { "keyword": "enum", "path": "/component$" },
+      "hint": "\"component\" must be one of: text, multiline_text, number, date, datetime, otp, card, document, biometric."
+    },
+    {
+      "when": { "keyword": "required", "params": { "missingProperty": "options" } },
+      "hint": "Selection nodes require \"options\": either {\"static\": [{\"value\": ..., \"label\": {...}}]} or a provider-backed options source."
+    },
+    {
+      "when": { "keyword": "oneOf", "path": "^/nodes/[^/]+/options$" },
+      "hint": "\"options\" must be either static ({\"static\": [...]}) or provider-based ({\"provider\": {...}}); do not mix both shapes."
+    },
+    {
+      "when": { "keyword": "required", "params": { "missingProperty": "content" } },
+      "hint": "Display nodes require \"content\" with either localized \"markdown\" or an \"htmlProvider\" string."
+    },
+    {
+      "when": { "keyword": "oneOf", "path": "^/nodes/[^/]+/content$" },
+      "hint": "Display \"content\" needs exactly one of localized \"markdown\" or \"htmlProvider\" (+optional \"providerRequest\")."
+    },
+    {
+      "when": { "keyword": "required", "params": { "missingProperty": "summary" } },
+      "hint": "Confirmation nodes require a localized \"summary\" object, e.g. {\"en\": \"...\", \"bn\": \"...\"}."
+    },
+    {
+      "when": { "keyword": "required", "params": { "missingProperty": "operation" } },
+      "hint": "Action and submit nodes need an \"operation\" string naming a backend operation."
+    },
+    {
+      "when": { "keyword": "required", "params": { "missingProperty": "onSuccess" } },
+      "hint": "Submit nodes require both \"onSuccess\" and \"onFailure\" node ids pointing at existing nodes."
+    },
+    {
+      "when": { "keyword": "required", "params": { "missingProperty": "onFailure" } },
+      "hint": "Submit nodes require both \"onSuccess\" and \"onFailure\" node ids pointing at existing nodes."
+    },
+    {
+      "when": { "keyword": "required", "params": { "missingProperty": "variant" } },
+      "hint": "Result nodes require \"variant\"; every workflow should end in at least one result node."
+    },
+    {
+      "when": { "keyword": "enum", "path": "/variant$" },
+      "hint": "\"variant\" must be one of: success, error, unavailable, cancelled."
+    },
+    {
+      "when": { "keyword": "oneOf", "path": "/transitions/\\d+$" },
+      "hint": "Each transition needs either \"when\": \"${expression}\" or \"default\": true (exactly one). Put conditional transitions first and end with one default."
+    },
+    {
+      "when": { "keyword": "required", "params": { "missingProperty": "to" } },
+      "hint": "Every transition needs a \"to\" node id that exists in \"nodes\"."
+    },
+    {
+      "when": { "keyword": "discriminator" },
+      "hint": "Unsupported node \"type\". Supported types: input, selection, display, action, confirmation, submit, result."
+    },
+    {
+      "when": { "keyword": "enum", "path": "/type$" },
+      "hint": "Node \"type\" must be one of: input, selection, display, action, confirmation, submit, result."
+    },
+    {
+      "when": { "keyword": "pattern", "path": "/binding" },
+      "hint": "Bindings are dot-separated context paths like \"request.address.postcode\"; each segment matches ^[A-Za-z][A-Za-z0-9_]*$. Register the root segment in \"contextSchema\"."
+    },
+    {
+      "when": { "keyword": "pattern", "path": "^/contextSchema/" },
+      "hint": "\"contextSchema\" keys are binding paths like \"request.customerId\" (dot-separated identifiers matching ^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)*$)."
+    },
+    {
+      "when": { "keyword": "minLength", "path": "/(when|skipWhen)$" },
+      "hint": "Expressions are strings wrapped as \"${...}\" (minimum length 4), e.g. \"${true}\"."
+    },
+    {
+      "when": { "keyword": "pattern", "path": "/(when|skipWhen)$" },
+      "hint": "Expressions must be wrapped as \"${...}\", e.g. \"${context.amount > 0}\"; they cannot execute arbitrary code. Never use them for node references."
+    },
+    {
+      "when": { "keyword": "format", "path": "" },
+      "hint": "Date fields accept ISO \"YYYY-MM-DD\" strings or \"${...}\" expressions resolving to a date."
+    },
+    {
+      "when": { "keyword": "minProperties", "path": "/(title|subtitle|primaryActionLabel|secondaryActionLabel|skipActionLabel|busyMessage|label|description|markdown|summary)$" },
+      "hint": "Localized text objects need at least one language key: \"en\" and/or \"bn\"."
+    },
+    {
+      "when": {
+        "keyword": "additionalProperties",
+        "path": "/(title|subtitle|primaryActionLabel|secondaryActionLabel|skipActionLabel|busyMessage|label|description|markdown|summary)/[^/]+$"
+      },
+      "hint": "Localized text supports only the language keys \"en\" and \"bn\"."
+    },
+    {
+      "when": {
+        "keyword": "additionalProperties",
+        "params": { "additionalProperty": "id" }
+      },
+      "hint": "Nodes have no \"id\" property; the key inside \"nodes\" is the identifier - remove the redundant \"id\" field."
+    },
+    {
+      "when": { "keyword": "additionalProperties" },
+      "hint": "Unknown property for this object - remove it or check docs/kiosk-workflow.schema.json for allowed properties."
+    },
+    {
+      "when": { "message": "does not exist", "path": "^/start$" },
+      "hint": "\"start\" points at a node id missing from \"nodes\"; set it to an existing node key."
+    },
+    {
+      "when": { "message": "References missing group" },
+      "hint": "The node's \"group\" must be a key of the top-level \"groups\" object; define the group there or drop the property."
+    },
+    {
+      "when": { "message": "References missing node" },
+      "hint": "A transition/target points at a node id absent from \"nodes\"; fix it to reference an existing node id (ids are case-sensitive)."
+    },
+    {
+      "when": { "message": "no terminal result node" },
+      "hint": "Add a result node (type: \"result\", variant: success/error/unavailable/cancelled) reachable from start so the flow can terminate."
+    },
+    {
+      "when": { "keyword": "required" },
+      "hint": "This object is missing a required property - see the kiosk-workflow.schema.json definition for this node type."
+    },
+    {
+      "when": { "keyword": "type" },
+      "hint": "Wrong JSON type for this field - check the schema's declared \"type\" (string vs integer vs boolean vs object vs array)."
+    }
+  ]
+}

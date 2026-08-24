@@ -29,6 +29,7 @@ import { WorkflowJsonViewer } from "@/components/workflow-json-viewer";
 import { workflowAdapter } from "@/lib/workflow/adapter";
 import { workflowToMermaid } from "@/lib/workflow/mermaid";
 import type { WorkflowRequestMode } from "@/lib/workflow/request-mode";
+import { formatIssueWithHint, withSchemaHints, type HintedWorkflowIssue } from "@/lib/workflow/schema-hints";
 import { workflowDb } from "@/lib/workflow/store";
 import type {
   JsonPatchOperation,
@@ -306,7 +307,7 @@ export function WorkflowWorkbench({
     {
       status: string;
       validation: string;
-      errors: WorkflowIssue[];
+      errors: HintedWorkflowIssue[];
       retryRequired: boolean;
       correctionInstructions?: string;
       nodeShapeReference?: typeof nodeShapeReference;
@@ -319,7 +320,7 @@ export function WorkflowWorkbench({
     parameters: workflowSchema as unknown as JSONSchema7,
     execute: async (generatedWorkflow) => {
       const issues = validateWorkflow(generatedWorkflow);
-      const errors = issues.filter((issue) => issue.severity === "error");
+      const errors = withSchemaHints(issues.filter((issue) => issue.severity === "error"));
       const hasErrors = errors.length > 0;
       const retryRequired = hasErrors;
       let savedRevisionId: string | undefined;
@@ -344,7 +345,7 @@ export function WorkflowWorkbench({
         ...(hasErrors
           ? {
             correctionInstructions:
-              "Correct every structured validation error in the same complete document. The next turn is forced to call generate_workflow; do not emit conversational text.",
+              "Correct every structured validation error in the same complete document, applying each error's fix hint. The next turn is forced to call generate_workflow; do not emit conversational text.",
             nodeShapeReference,
           }
           : {}),
@@ -370,7 +371,7 @@ export function WorkflowWorkbench({
       return (
         <WorkflowToolError
           title={result?.retryRequired ? "Correcting workflow" : "Workflow generation failed"}
-          messages={result?.errors.map((issue) => issue.message)}
+          messages={result?.errors.map(formatIssueWithHint)}
           fallback={
             status.type === "incomplete"
               ? `The model produced an incomplete tool call (${status.reason}).`
@@ -428,7 +429,7 @@ export function WorkflowWorkbench({
           status: errors.length ? "invalid" : "applied",
           validation: issueSummary(nextIssues),
           affectedNodeIds,
-          errors: errors.map((issue) => issue.message),
+          errors: withSchemaHints(errors),
         };
       } catch (error) {
         return {
@@ -439,7 +440,7 @@ export function WorkflowWorkbench({
     },
     render: ({ result, status, argsText }) => {
       const toolResult = result as
-        | { status?: string; message?: string; errors?: string[] }
+        | { status?: string; message?: string; errors?: HintedWorkflowIssue[] }
         | undefined;
       if (status.type === "running") {
         return (
@@ -459,7 +460,7 @@ export function WorkflowWorkbench({
       return (
         <WorkflowToolError
           title="Workflow edit failed"
-          messages={toolResult?.errors}
+          messages={toolResult?.errors?.map(formatIssueWithHint)}
           fallback={
             toolResult?.message ??
             (status.type === "incomplete"
