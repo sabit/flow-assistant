@@ -47,8 +47,8 @@ const initialWorkflow = sampleWorkflow as WorkflowDocument;
 const now = () => new Date().toISOString();
 const newId = () => crypto.randomUUID();
 const assistantInstructions = `You are the workflow authoring assistant. Workflow documents are immutable browser-side revisions; you never mutate them directly.
-Do not populate optional properties unless required by the business requirement or necessary for the workflow.
 For a request to generate a fresh workflow from business requirements, call generate_workflow with the complete workflow document. Its input schema is the complete kiosk workflow JSON Schema. If the tool returns status "invalid" with retryRequired true, silently correct the complete document from the structured validation errors and call generate_workflow again. Do not respond between attempts and do not ask to build one node at a time.
+Do not emit optional properties merely because they exist in the schema. If an optional property is not required to represent the user's requirement, omit it. Never emit placeholder values such as {}, [], false, null, or empty strings just to populate optional properties.
 For a requested modification to an existing workflow, inspect the provided revision-aware context and call propose_workflow_patch exactly once with an RFC 6902 JSON Patch and the exact baseRevisionId. Do not call either tool when the request is only explanatory. Use narrow patches for edits, preserve schema validity, and describe changes concisely. Valid changes are saved automatically as immutable revisions.`;
 
 const nodeShapeReference = {
@@ -682,8 +682,8 @@ export function WorkflowWorkbench({
                   aria-pressed={requestMode === mode}
                   onClick={() => onRequestModeChange(mode)}
                   className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${requestMode === mode
-                      ? "bg-white text-slate-950 shadow-sm"
-                      : "text-slate-500 hover:text-slate-800"
+                    ? "bg-white text-slate-950 shadow-sm"
+                    : "text-slate-500 hover:text-slate-800"
                     }`}
                 >
                   {label}

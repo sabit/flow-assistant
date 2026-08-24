@@ -51,6 +51,7 @@ const getRetryToolName = (messages: UIMessage[]) => {
 };
 
 export async function POST(req: Request) {
+  const startedAt = Date.now();
   const {
     messages,
     system,
@@ -179,5 +180,9 @@ export async function POST(req: Request) {
   return result.toUIMessageStreamResponse({
     sendReasoning: true,
     onError: (error) => (error instanceof Error ? error.message : String(error)),
+    messageMetadata: ({ part }) =>
+      part.type === "finish"
+        ? { usage: part.totalUsage, durationMs: Date.now() - startedAt }
+        : undefined,
   });
 }

@@ -298,6 +298,55 @@ const MessageError: FC = () => {
   );
 };
 
+type ChatMessageStats = {
+  usage?: {
+    inputTokens?: number;
+    outputTokens?: number;
+    totalTokens?: number;
+  };
+  durationMs?: number;
+};
+
+const AssistantMessageStats: FC = () => {
+  const metadata = useAuiState((s) =>
+    s.message.status?.type === "complete"
+      ? (s.message.metadata as unknown as ChatMessageStats | undefined)
+      : undefined,
+  );
+  const usage = metadata?.usage;
+  const totalTokens =
+    usage?.totalTokens ??
+    (usage?.inputTokens != null && usage.outputTokens != null
+      ? usage.inputTokens + usage.outputTokens
+      : undefined);
+  const durationMs = metadata?.durationMs;
+  if (durationMs == null && totalTokens == null) return null;
+
+  const duration =
+    durationMs == null
+      ? undefined
+      : durationMs < 1000
+        ? `${durationMs}ms`
+        : `${(durationMs / 1000).toFixed(1)}s`;
+  const label = [duration, totalTokens != null ? `${totalTokens} tokens` : null]
+    .filter(Boolean)
+    .join(" · ");
+
+  return (
+    <span
+      data-slot="aui_assistant-message-stats"
+      className="text-muted-foreground whitespace-nowrap text-xs font-medium"
+      title={
+        usage?.inputTokens != null && usage.outputTokens != null
+          ? `${usage.inputTokens} input · ${usage.outputTokens} output tokens`
+          : undefined
+      }
+    >
+      {label}
+    </span>
+  );
+};
+
 const AssistantMessage: FC = () => {
   const {
     ToolFallback: ToolFallbackComponent = ToolFallback,
@@ -399,9 +448,10 @@ const AssistantMessage: FC = () => {
 
       <div
         data-slot="aui_assistant-message-footer"
-        className={cn("ms-2 flex items-center", ACTION_BAR_HEIGHT)}
+        className={cn("ms-2 flex items-center gap-2", ACTION_BAR_HEIGHT)}
       >
         <BranchPicker />
+        <AssistantMessageStats />
         <AssistantActionBar />
       </div>
     </MessagePrimitive.Root>
