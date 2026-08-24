@@ -1204,6 +1204,12 @@ function RawWorkflowDialog({
   const revisionIssues = useMemo(() => validateWorkflow(revision.workflow), [revision.workflow]);
   const errors = revisionIssues.filter((issue) => issue.severity === "error").length;
   const warnings = revisionIssues.length - errors;
+  const [copied, setCopied] = useState(false);
+  const copyJson = async () => {
+    await navigator.clipboard.writeText(JSON.stringify(revision.workflow, null, 2));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 3000);
+  };
   return (
     <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-950/50 p-4">
       <section className="flex h-[min(52rem,92vh)] w-[min(76rem,96vw)] flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
@@ -1214,14 +1220,24 @@ function RawWorkflowDialog({
               Revision {revision.id.slice(0, 8)} · {errors} errors · {warnings} warnings
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-md p-2 text-slate-600 hover:bg-slate-100"
-            aria-label="Close raw workflow"
-          >
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={copyJson}
+              className="rounded-md p-2 text-slate-600 hover:bg-slate-100"
+              aria-label={copied ? "Copied raw workflow JSON" : "Copy raw workflow JSON"}
+            >
+              {copied ? <Check size={18} /> : <Copy size={18} />}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-md p-2 text-slate-600 hover:bg-slate-100"
+              aria-label="Close raw workflow"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </header>
         <div className="min-h-0 flex-1">
           <WorkflowJsonViewer document={revision.workflow} issues={revisionIssues} />
