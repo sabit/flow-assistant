@@ -16,6 +16,9 @@ import {
 
 const getModelName = () => process.env.OLLAMA_MODEL ?? "qwen3:8b";
 
+const toolCallFormatInstruction =
+  "Format requirement: Every tool invocation MUST begin with the literal opening tag <tool_call> on its own line and end with </tool_call>. Never omit these tags.";
+
 const modeInstructions: Record<WorkflowRequestMode, string> = {
   generate:
     "Active request mode: generate. Call generate_workflow with a complete workflow document. Do not emit the workflow document as conversational text.",
@@ -108,7 +111,13 @@ export async function POST(req: Request) {
     );
   }
   const selectedTools = forcedTool ? { [forcedTool]: availableTools[forcedTool]! } : {};
-  const requestSystem = [system, modeInstructions[requestMode]].filter(Boolean).join("\n\n");
+  const requestSystem = [
+    system,
+    modeInstructions[requestMode],
+    forcedTool ? toolCallFormatInstruction : undefined,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
   console.debug("[chat] tool choice", {
     requestMode,
     choice: forcedTool ?? "none",
@@ -124,6 +133,7 @@ export async function POST(req: Request) {
     model: ollama.chat(model),
     messages: modelMessages,
     system: requestSystem,
+    temperature: 0,
     tools: selectedTools,
     activeTools: Object.keys(selectedTools),
     toolChoice: forcedTool ? { type: "tool" as const, toolName: forcedTool } : "none",

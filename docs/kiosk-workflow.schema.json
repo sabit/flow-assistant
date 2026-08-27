@@ -5,11 +5,7 @@
   "description": "Declarative graph-based kiosk workflow. Nodes render through a controlled Flutter component catalogue, values are stored in a shared runtime context, integrations are referenced through named backend operations/providers, and submission-time validation errors are mapped back to workflow bindings for correction.",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "version",
-    "start",
-    "nodes"
-  ],
+  "required": ["version", "start", "nodes"],
   "properties": {
     "version": {
       "type": "integer",
@@ -89,9 +85,7 @@
     "workflowGroup": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "label"
-      ],
+      "required": ["label"],
       "properties": {
         "label": {
           "$ref": "#/$defs/localizedText"
@@ -111,22 +105,11 @@
     "contextField": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "type"
-      ],
+      "required": ["type"],
       "properties": {
         "type": {
           "type": "string",
-          "enum": [
-            "string",
-            "number",
-            "integer",
-            "boolean",
-            "date",
-            "datetime",
-            "object",
-            "array"
-          ]
+          "enum": ["string", "number", "integer", "boolean", "date", "datetime", "object", "array"]
         },
         "semanticType": {
           "type": "string",
@@ -245,9 +228,7 @@
     "transition": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "to"
-      ],
+      "required": ["to"],
       "properties": {
         "when": {
           "$ref": "#/$defs/expression"
@@ -262,23 +243,17 @@
       },
       "oneOf": [
         {
-          "required": [
-            "when"
-          ]
+          "required": ["when"]
         },
         {
-          "required": [
-            "default"
-          ]
+          "required": ["default"]
         }
       ]
     },
     "requiredValidator": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "type"
-      ],
+      "required": ["type"],
       "properties": {
         "type": {
           "const": "required"
@@ -288,10 +263,7 @@
         },
         "onFailure": {
           "type": "string",
-          "enum": [
-            "block",
-            "warn"
-          ],
+          "enum": ["block", "warn"],
           "default": "block"
         }
       }
@@ -299,10 +271,7 @@
     "regexValidator": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "type",
-        "pattern"
-      ],
+      "required": ["type", "pattern"],
       "properties": {
         "type": {
           "const": "regex"
@@ -316,10 +285,7 @@
         },
         "onFailure": {
           "type": "string",
-          "enum": [
-            "block",
-            "warn"
-          ],
+          "enum": ["block", "warn"],
           "default": "block"
         }
       }
@@ -327,9 +293,7 @@
     "lengthValidator": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "type"
-      ],
+      "required": ["type"],
       "properties": {
         "type": {
           "const": "length"
@@ -347,32 +311,23 @@
         },
         "onFailure": {
           "type": "string",
-          "enum": [
-            "block",
-            "warn"
-          ],
+          "enum": ["block", "warn"],
           "default": "block"
         }
       },
       "anyOf": [
         {
-          "required": [
-            "min"
-          ]
+          "required": ["min"]
         },
         {
-          "required": [
-            "max"
-          ]
+          "required": ["max"]
         }
       ]
     },
     "rangeValidator": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "type"
-      ],
+      "required": ["type"],
       "properties": {
         "type": {
           "const": "range"
@@ -388,33 +343,23 @@
         },
         "onFailure": {
           "type": "string",
-          "enum": [
-            "block",
-            "warn"
-          ],
+          "enum": ["block", "warn"],
           "default": "block"
         }
       },
       "anyOf": [
         {
-          "required": [
-            "min"
-          ]
+          "required": ["min"]
         },
         {
-          "required": [
-            "max"
-          ]
+          "required": ["max"]
         }
       ]
     },
     "expressionValidator": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "type",
-        "expression"
-      ],
+      "required": ["type", "expression"],
       "properties": {
         "type": {
           "const": "expression"
@@ -427,10 +372,7 @@
         },
         "onFailure": {
           "type": "string",
-          "enum": [
-            "block",
-            "warn"
-          ],
+          "enum": ["block", "warn"],
           "default": "block"
         }
       }
@@ -438,10 +380,7 @@
     "apiValidator": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "type",
-        "operation"
-      ],
+      "required": ["type", "operation"],
       "properties": {
         "type": {
           "const": "api"
@@ -464,10 +403,7 @@
         },
         "onFailure": {
           "type": "string",
-          "enum": [
-            "block",
-            "warn"
-          ],
+          "enum": ["block", "warn"],
           "default": "block"
         }
       }
@@ -497,9 +433,7 @@
     "documentInputConfig": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "documentTypeCode"
-      ],
+      "required": ["documentTypeCode"],
       "properties": {
         "documentTypeCode": {
           "type": "string",
@@ -541,14 +475,10 @@
                 "const": true
               }
             },
-            "required": [
-              "uploadRequired"
-            ]
+            "required": ["uploadRequired"]
           },
           "then": {
-            "required": [
-              "uploadProvider"
-            ]
+            "required": ["uploadProvider"]
           }
         }
       ]
@@ -556,23 +486,15 @@
     "biometricInputConfig": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "modality",
-        "mode"
-      ],
+      "required": ["modality", "mode"],
       "properties": {
         "modality": {
           "type": "string",
-          "enum": [
-            "face",
-            "fingerprint"
-          ]
+          "enum": ["face", "fingerprint"]
         },
         "mode": {
           "type": "string",
-          "enum": [
-            "capture"
-          ],
+          "enum": ["capture"],
           "description": "Capture is performed by the kiosk/device adapter. Verification should normally be a subsequent action node invoking a named backend operation."
         },
         "deviceProvider": {
@@ -606,14 +528,7 @@
       "properties": {
         "keyboard": {
           "type": "string",
-          "enum": [
-            "text",
-            "numeric",
-            "decimal",
-            "email",
-            "phone",
-            "url"
-          ]
+          "enum": ["text", "numeric", "decimal", "email", "phone", "url"]
         },
         "mask": {
           "type": "string"
@@ -664,10 +579,7 @@
     "optionItem": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "value",
-        "label"
-      ],
+      "required": ["value", "label"],
       "properties": {
         "value": {
           "$ref": "#/$defs/valueTemplate"
@@ -689,9 +601,7 @@
     "staticOptions": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "items"
-      ],
+      "required": ["items"],
       "properties": {
         "items": {
           "type": "array",
@@ -705,9 +615,7 @@
     "providerOptions": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "provider"
-      ],
+      "required": ["provider"],
       "properties": {
         "provider": {
           "type": "string",
@@ -766,24 +674,17 @@
       },
       "oneOf": [
         {
-          "required": [
-            "binding"
-          ]
+          "required": ["binding"]
         },
         {
-          "required": [
-            "group"
-          ]
+          "required": ["group"]
         }
       ]
     },
     "summaryItem": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "label",
-        "value"
-      ],
+      "required": ["label", "value"],
       "properties": {
         "label": {
           "$ref": "#/$defs/localizedText"
@@ -793,14 +694,7 @@
         },
         "format": {
           "type": "string",
-          "enum": [
-            "text",
-            "date",
-            "datetime",
-            "number",
-            "currency",
-            "masked"
-          ]
+          "enum": ["text", "date", "datetime", "number", "currency", "masked"]
         },
         "mask": {
           "type": "string"
@@ -819,27 +713,17 @@
       "properties": {
         "mode": {
           "type": "string",
-          "enum": [
-            "field_correction",
-            "error_result"
-          ],
+          "enum": ["field_correction", "error_result"],
           "default": "field_correction"
         },
         "singleErrorBehavior": {
           "type": "string",
-          "enum": [
-            "jump_to_field",
-            "show_summary"
-          ],
+          "enum": ["jump_to_field", "show_summary"],
           "default": "jump_to_field"
         },
         "multipleErrorBehavior": {
           "type": "string",
-          "enum": [
-            "correction_queue",
-            "show_summary",
-            "first_error"
-          ],
+          "enum": ["correction_queue", "show_summary", "first_error"],
           "default": "correction_queue"
         },
         "returnTo": {
@@ -909,9 +793,7 @@
       "discriminator": {
         "propertyName": "type"
       },
-      "required": [
-        "type"
-      ],
+      "required": ["type"],
       "oneOf": [
         {
           "$ref": "#/$defs/inputNode"
@@ -939,11 +821,7 @@
     "inputNode": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "type",
-        "component",
-        "binding"
-      ],
+      "required": ["type", "component", "binding"],
       "properties": {
         "type": {
           "const": "input"
@@ -1006,14 +884,10 @@
       },
       "oneOf": [
         {
-          "required": [
-            "next"
-          ]
+          "required": ["next"]
         },
         {
-          "required": [
-            "transitions"
-          ]
+          "required": ["transitions"]
         }
       ],
       "allOf": [
@@ -1024,19 +898,13 @@
                 "const": "document"
               }
             },
-            "required": [
-              "component"
-            ]
+            "required": ["component"]
           },
           "then": {
-            "required": [
-              "input"
-            ],
+            "required": ["input"],
             "properties": {
               "input": {
-                "required": [
-                  "document"
-                ]
+                "required": ["document"]
               }
             }
           }
@@ -1048,19 +916,13 @@
                 "const": "biometric"
               }
             },
-            "required": [
-              "component"
-            ]
+            "required": ["component"]
           },
           "then": {
-            "required": [
-              "input"
-            ],
+            "required": ["input"],
             "properties": {
               "input": {
-                "required": [
-                  "biometric"
-                ]
+                "required": ["biometric"]
               }
             }
           }
@@ -1070,11 +932,7 @@
     "selectionNode": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "type",
-        "binding",
-        "options"
-      ],
+      "required": ["type", "binding", "options"],
       "properties": {
         "type": {
           "const": "selection"
@@ -1133,14 +991,10 @@
       },
       "oneOf": [
         {
-          "required": [
-            "next"
-          ]
+          "required": ["next"]
         },
         {
-          "required": [
-            "transitions"
-          ]
+          "required": ["transitions"]
         }
       ]
     },
@@ -1161,37 +1015,24 @@
       },
       "oneOf": [
         {
-          "required": [
-            "markdown"
-          ]
+          "required": ["markdown"]
         },
         {
-          "required": [
-            "htmlProvider"
-          ]
+          "required": ["htmlProvider"]
         }
       ]
     },
     "displayNode": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "type",
-        "content",
-        "next"
-      ],
+      "required": ["type", "content", "next"],
       "properties": {
         "type": {
           "const": "display"
         },
         "variant": {
           "type": "string",
-          "enum": [
-            "notice",
-            "information",
-            "terms",
-            "warning"
-          ]
+          "enum": ["notice", "information", "terms", "warning"]
         },
         "group": {
           "$ref": "#/$defs/groupId"
@@ -1223,11 +1064,7 @@
     "actionNode": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "type",
-        "operation",
-        "next"
-      ],
+      "required": ["type", "operation", "next"],
       "properties": {
         "type": {
           "const": "action"
@@ -1268,11 +1105,7 @@
     "confirmationNode": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "type",
-        "summary",
-        "next"
-      ],
+      "required": ["type", "summary", "next"],
       "properties": {
         "type": {
           "const": "confirmation"
@@ -1300,12 +1133,7 @@
     "submitNode": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "type",
-        "operation",
-        "onSuccess",
-        "onFailure"
-      ],
+      "required": ["type", "operation", "onSuccess", "onFailure"],
       "properties": {
         "type": {
           "const": "submit"
@@ -1357,22 +1185,14 @@
     "resultNode": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "type",
-        "variant"
-      ],
+      "required": ["type", "variant"],
       "properties": {
         "type": {
           "const": "result"
         },
         "variant": {
           "type": "string",
-          "enum": [
-            "success",
-            "error",
-            "unavailable",
-            "cancelled"
-          ]
+          "enum": ["success", "error", "unavailable", "cancelled"]
         },
         "presentation": {
           "$ref": "#/$defs/presentation"

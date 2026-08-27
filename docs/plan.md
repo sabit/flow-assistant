@@ -14,10 +14,10 @@ Do not create a separate React/Vite scaffold unless the generated project requir
 
 Add only the dependencies needed for:
 
-* Mermaid
-* AJV
-* RFC 6902 JSON Patch
-* Dexie / IndexedDB
+- Mermaid
+- AJV
+- RFC 6902 JSON Patch
+- Dexie / IndexedDB
 
 Use assistant-ui's generated/recommended backend runtime for model access.
 
@@ -27,15 +27,15 @@ Do not implement frontend API/provider configuration.
 
 Build a lightweight workflow authoring/review tool where:
 
-* workflow JSON is the source of truth
-* AI creates or modifies workflow JSON
-* users visualize the workflow
-* users select a node/group and attach it to chat
-* AI proposes RFC 6902 JSON Patch changes
-* users review and Apply/Reject changes
-* accepted changes create immutable revisions
-* previous revisions can be restored
-* workflows can be imported/exported through clipboard
+- workflow JSON is the source of truth
+- AI creates or modifies workflow JSON
+- users visualize the workflow
+- users select a node/group and attach it to chat
+- AI proposes RFC 6902 JSON Patch changes
+- users review and Apply/Reject changes
+- accepted changes create immutable revisions
+- previous revisions can be restored
+- workflows can be imported/exported through clipboard
 
 The initial workflow profile is:
 
@@ -125,11 +125,11 @@ App
 
 Do not recreate:
 
-* sidebar resizing
-* chat scrolling
-* message rendering
-* composer infrastructure
-* tool-call infrastructure
+- sidebar resizing
+- chat scrolling
+- message rendering
+- composer infrastructure
+- tool-call infrastructure
 
 if assistant-ui already provides them.
 
@@ -173,15 +173,9 @@ interface WorkflowAdapter {
 
   getGroups(workflow: unknown): WorkflowGroupRef[];
 
-  getNode(
-    workflow: unknown,
-    nodeId: string
-  ): unknown;
+  getNode(workflow: unknown, nodeId: string): unknown;
 
-  buildSelectionContext(
-    workflow: unknown,
-    selection: WorkflowSelection
-  ): unknown;
+  buildSelectionContext(workflow: unknown, selection: WorkflowSelection): unknown;
 }
 ```
 
@@ -245,9 +239,9 @@ Do not persist Mermaid source or graph coordinates.
 
 Support:
 
-* node selection
-* group selection
-* whole workflow attachment
+- node selection
+- group selection
+- whole workflow attachment
 
 Selected node state should expose:
 
@@ -294,7 +288,7 @@ Store the attachment internally as a reference:
 
 ```ts
 interface WorkflowAttachment {
-  type: 'workflow_node' | 'workflow_group' | 'workflow';
+  type: "workflow_node" | "workflow_group" | "workflow";
   revisionId: string;
   nodeId?: string;
   groupId?: string;
@@ -307,12 +301,12 @@ When preparing model context, resolve the attachment against the referenced immu
 
 For a node include:
 
-* node ID
-* node definition
-* group metadata if applicable
-* bindings
-* incoming edges
-* outgoing edges
+- node ID
+- node definition
+- group metadata if applicable
+- bindings
+- incoming edges
+- outgoing edges
 
 For a group include the relevant group definition and member nodes.
 
@@ -337,30 +331,30 @@ Do not automatically send the entire workflow.
 
 Send the whole workflow only when:
 
-* explicitly attached
-* required to safely perform the requested modification
+- explicitly attached
+- required to safely perform the requested modification
 
 ## Assistant UI / AI
 
 Use assistant-ui for:
 
-* Thread
-* Composer
-* messages
-* streaming
-* retries/regeneration
-* tool calls
-* custom tool rendering
-* workflow context attachments where possible
+- Thread
+- Composer
+- messages
+- streaming
+- retries/regeneration
+- tool calls
+- custom tool rendering
+- workflow context attachments where possible
 
 Use its backend/runtime for model access.
 
 Do not implement:
 
-* API Base URL UI
-* Model UI
-* Bearer key UI
-* OpenAI-compatible browser adapter
+- API Base URL UI
+- Model UI
+- Bearer key UI
+- OpenAI-compatible browser adapter
 
 Model/provider configuration belongs to the assistant-ui backend environment.
 
@@ -372,8 +366,8 @@ Register a workflow-specific tool:
 propose_workflow_patch({
   summary,
   baseRevisionId,
-  patch
-})
+  patch,
+});
 ```
 
 `patch` must be RFC 6902 JSON Patch.
@@ -455,12 +449,12 @@ If `baseRevisionId` is no longer the current revision, flag the proposal as stal
 
 On Apply:
 
-* save the complete resulting workflow as a new immutable revision
-* save the original patch
-* save the AI summary
-* set source to `ai`
-* make the new revision current
-* rerender Mermaid
+- save the complete resulting workflow as a new immutable revision
+- save the original patch
+- save the AI summary
+- set source to `ai`
+- make the new revision current
+- rerender Mermaid
 
 ### Reject
 
@@ -479,11 +473,7 @@ interface WorkflowRevision {
   parentRevisionId?: string;
   createdAt: string;
 
-  source:
-    | 'new'
-    | 'import'
-    | 'ai'
-    | 'restore';
+  source: "new" | "import" | "ai" | "restore";
 
   summary?: string;
   workflow: unknown;
@@ -497,9 +487,9 @@ The snapshot is authoritative.
 
 The patch is useful for:
 
-* audit
-* proposal display
-* change explanation
+- audit
+- proposal display
+- change explanation
 
 ## Undo / Restore
 
@@ -563,10 +553,10 @@ Copy only the current workflow JSON.
 
 Do not export:
 
-* revision metadata
-* chat history
-* Mermaid data
-* application state
+- revision metadata
+- chat history
+- Mermaid data
+- application state
 
 ## Validation
 
@@ -582,19 +572,19 @@ Use AJV with:
 
 Check at least:
 
-* `start` references an existing node
-* every `next` target exists
-* every transition target exists
-* referenced groups exist
-* malformed graph references → error
-* unreachable nodes → warning
-* no terminal/result node → warning
+- `start` references an existing node
+- every `next` target exists
+- every transition target exists
+- referenced groups exist
+- malformed graph references → error
+- unreachable nodes → warning
+- no terminal/result node → warning
 
 Return:
 
 ```ts
 interface WorkflowIssue {
-  severity: 'error' | 'warning';
+  severity: "error" | "warning";
   nodeId?: string;
   message: string;
 }
@@ -612,9 +602,9 @@ Example:
 
 ```ts
 interface WorkflowAttachment {
-  revisionId: 'rev-12';
-  type: 'workflow_node';
-  nodeId: 'dob';
+  revisionId: "rev-12";
+  type: "workflow_node";
+  nodeId: "dob";
 }
 ```
 
@@ -632,18 +622,18 @@ retain their original meaning.
 
 Do not build:
 
-* user authentication
-* workflow backend persistence
-* API/provider configuration UI
-* browser-side API credentials
-* collaboration
-* drag/drop workflow editing
-* manual graph editing
-* workflow execution
-* Git integration
-* permissions
-* multi-user functionality
-* complex project/project-folder management
+- user authentication
+- workflow backend persistence
+- API/provider configuration UI
+- browser-side API credentials
+- collaboration
+- drag/drop workflow editing
+- manual graph editing
+- workflow execution
+- Git integration
+- permissions
+- multi-user functionality
+- complex project/project-folder management
 
 Do not build functionality already provided adequately by assistant-ui.
 

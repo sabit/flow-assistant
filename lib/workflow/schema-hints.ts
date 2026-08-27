@@ -31,8 +31,7 @@ const ruleMatches = (issue: WorkflowIssue, rule: HintRule) => {
   if (
     params &&
     !Object.entries(params).every(
-      ([key, value]) =>
-        (issue.params as Record<string, unknown> | undefined)?.[key] === value,
+      ([key, value]) => (issue.params as Record<string, unknown> | undefined)?.[key] === value,
     )
   ) {
     return false;

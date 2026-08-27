@@ -1,0 +1,7 @@
+generate a workflow for Account Opening with these steps:
+- enter NID (either 10 or 17 digits)
+- enter dob, validate with api
+- account type selection (Savings, Accounts)
+- if Savings enter mobile number (11-digit)
+- confirm and submit
+- completion

@@ -29,7 +29,11 @@ import { WorkflowJsonViewer } from "@/components/workflow-json-viewer";
 import { workflowAdapter } from "@/lib/workflow/adapter";
 import { workflowToMermaid } from "@/lib/workflow/mermaid";
 import type { WorkflowRequestMode } from "@/lib/workflow/request-mode";
-import { formatIssueWithHint, withSchemaHints, type HintedWorkflowIssue } from "@/lib/workflow/schema-hints";
+import {
+  formatIssueWithHint,
+  withSchemaHints,
+  type HintedWorkflowIssue,
+} from "@/lib/workflow/schema-hints";
 import { workflowDb } from "@/lib/workflow/store";
 import type {
   JsonPatchOperation,
@@ -344,10 +348,10 @@ export function WorkflowWorkbench({
         savedRevisionId,
         ...(hasErrors
           ? {
-            correctionInstructions:
-              "Correct every structured validation error in the same complete document, applying each error's fix hint. The next turn is forced to call generate_workflow; do not emit conversational text.",
-            nodeShapeReference,
-          }
+              correctionInstructions:
+                "Correct every structured validation error in the same complete document, applying each error's fix hint. The next turn is forced to call generate_workflow; do not emit conversational text.",
+              nodeShapeReference,
+            }
           : {}),
       };
     },
@@ -519,10 +523,10 @@ export function WorkflowWorkbench({
     label: string;
     disabled?: boolean;
   }> = [
-      { mode: "generate", label: "Generate" },
-      { mode: "modify", label: "Edit", disabled: !attachment },
-      { mode: "explain", label: "Ask" },
-    ];
+    { mode: "generate", label: "Generate" },
+    { mode: "modify", label: "Edit", disabled: !attachment },
+    { mode: "explain", label: "Ask" },
+  ];
 
   return (
     <main className="flex h-dvh min-w-0 flex-col bg-slate-50 text-slate-950">
@@ -681,10 +685,11 @@ export function WorkflowWorkbench({
                   disabled={disabled}
                   aria-pressed={requestMode === mode}
                   onClick={() => onRequestModeChange(mode)}
-                  className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${requestMode === mode
-                    ? "bg-white text-slate-950 shadow-sm"
-                    : "text-slate-500 hover:text-slate-800"
-                    }`}
+                  className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                    requestMode === mode
+                      ? "bg-white text-slate-950 shadow-sm"
+                      : "text-slate-500 hover:text-slate-800"
+                  }`}
                 >
                   {label}
                 </button>
