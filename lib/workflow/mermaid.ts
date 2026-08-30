@@ -49,7 +49,7 @@ export const workflowToMermaid = (workflow: WorkflowDocument, selectedNodeId?: s
     const [fill, stroke] = (palette[type] ?? "#f3f4f6,#4b5563").split(",");
     lines.push(`classDef ${type} fill:${fill},stroke:${stroke},stroke-width:1.5px,color:#172033;`);
   }
-  lines.push("classDef selected stroke:#111827,stroke-width:4px;");
+  lines.push("classDef selected stroke-width:1.5px,rx:8,ry:8;");
   for (const [id, node] of Object.entries(workflow.nodes)) {
     lines.push(`class ${safeId(id)} ${node.type}${id === selectedNodeId ? ",selected" : ""};`);
     lines.push(`click ${safeId(id)} workflowSelect "Select ${escape(getNodeLabel(id, node))}"`);

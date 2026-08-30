@@ -1,6 +1,5 @@
 "use client";
 
-import mermaid from "mermaid";
 import { applyPatch } from "fast-json-patch";
 import {
   useAssistantContext,
@@ -772,13 +771,15 @@ function MermaidCanvas({
   useEffect(() => {
     let active = true;
     const render = async () => {
-      mermaid.initialize({
+      const mermaidModule = await import("mermaid");
+      const mermaidLib = mermaidModule.default;
+      mermaidLib.initialize({
         startOnLoad: false,
         securityLevel: "loose",
         theme: "base",
         flowchart: { htmlLabels: true, curve: "basis" },
       });
-      const result = await mermaid.render(
+      const result = await mermaidLib.render(
         `workflow-${Math.random().toString(36).slice(2)}`,
         workflowToMermaid(workflow, selectedNodeId),
       );
